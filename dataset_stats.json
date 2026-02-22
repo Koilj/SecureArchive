@@ -1,0 +1,38 @@
+{
+  "total_rows": 150000,
+  "num_classes": 26,
+  "labels_per_sample": {
+    "1": 129372,
+    "2": 17078,
+    "3": 3116,
+    "4": 434
+  },
+  "top_labels": {
+    "quant-ph": 44642,
+    "math.PR": 19698,
+    "cs.IT": 15662,
+    "math.OC": 9411,
+    "cs.LG": 7909,
+    "math.ST": 7370,
+    "cs.AI": 6922,
+    "cs.DS": 6814,
+    "cs.NI": 6316,
+    "stat.ML": 6297,
+    "cs.CV": 5726,
+    "physics.comp-ph": 5344,
+    "cs.SI": 4982,
+    "cs.CR": 4494,
+    "cs.DC": 4069,
+    "physics.data-an": 3779,
+    "q-bio.QM": 2853,
+    "cs.SE": 2829,
+    "cs.CL": 2274,
+    "cs.CY": 2267,
+    "q-bio.NC": 2244,
+    "cs.RO": 1384,
+    "q-bio.GN": 1248,
+    "econ.EM": 54,
+    "eess.SP": 13,
+    "eess.IV": 11
+  }
+}

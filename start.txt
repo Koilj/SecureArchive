@@ -1,0 +1,121 @@
+1. python init_network.py
+
+2. 
+1)
+cd /home/ruslan/working/agent-go
+source venv/bin/activate
+export FABRIC_PATH=/home/ruslan/fabric-dev/fabric-samples/test-network
+
+export AGENT_ORG=org1
+export AGENT_USER=SecurityService
+export AGENT_MSPID=Org1MSP
+export AGENT_PEER_ENDPOINT=localhost:7051
+export AGENT_PEER_HOST=peer0.org1.example.com
+export AGENT_HTTP_ADDR=127.0.0.1:8090
+export AGENT_TOKEN=security_token_123
+
+go run . serve
+
+2)
+cd /home/ruslan/working/agent-go
+source venv/bin/activate
+export FABRIC_PATH=/home/ruslan/fabric-dev/fabric-samples/test-network
+
+export AGENT_ORG=org1
+export AGENT_USER=MLService
+export AGENT_MSPID=Org1MSP
+export AGENT_PEER_ENDPOINT=localhost:7051
+export AGENT_PEER_HOST=peer0.org1.example.com
+export AGENT_HTTP_ADDR=127.0.0.1:8091
+export AGENT_TOKEN=ml_token_123
+
+go run . serve
+
+3)
+cd /home/ruslan/working/agent-go
+source venv/bin/activate
+export FABRIC_PATH=/home/ruslan/fabric-dev/fabric-samples/test-network
+
+export AGENT_ORG=org1
+export AGENT_USER=Ruslan
+export AGENT_MSPID=Org1MSP
+export AGENT_PEER_ENDPOINT=localhost:7051
+export AGENT_PEER_HOST=peer0.org1.example.com
+export AGENT_HTTP_ADDR=127.0.0.1:8088
+export AGENT_TOKEN=ruslan_token_123
+
+go run . serve
+
+4)
+cd /home/ruslan/working/agent-go
+source venv/bin/activate
+export FABRIC_PATH=/home/ruslan/fabric-dev/fabric-samples/test-network
+
+export AGENT_ORG=org2
+export AGENT_USER=Ersultan
+export AGENT_MSPID=Org2MSP
+export AGENT_PEER_ENDPOINT=localhost:9051
+export AGENT_PEER_HOST=peer0.org2.example.com
+export AGENT_HTTP_ADDR=127.0.0.1:8089
+export AGENT_TOKEN=ersultan_token_123
+
+go run . serve
+
+3. 
+curl -s http://127.0.0.1:8088/health
+curl -s http://127.0.0.1:8089/health
+curl -s http://127.0.0.1:8090/health
+curl -s http://127.0.0.1:8091/health
+echo
+
+4. 
+1)
+curl -s http://127.0.0.1:8091/eval \
+  -H "Authorization: Bearer ml_token_123" \
+  -H "Content-Type: application/json" \
+  -d '{"function":"WhoAmI","args":[]}'
+
+2)
+curl -s http://127.0.0.1:8090/submit \
+  -H "Authorization: Bearer security_token_123" \
+  -H "Content-Type: application/json" \
+  -d '{"function":"BindServiceIdentity","args":["MLService","<>"]}'
+
+5.  Register User
+1)
+python3 - <<'PY' | curl -s http://127.0.0.1:8088/submit \
+  -H "Authorization: Bearer ruslan_token_123" \
+  -H "Content-Type: application/json" \
+  --data-binary @-
+import json, subprocess
+pub = subprocess.check_output(["curl","-s","http://127.0.0.1:8088/rsa/publicKey"]).decode()
+print(json.dumps({"function":"RegisterUser","args":["Ruslan", pub, "", ""]}))
+PY
+echo
+
+2)
+python3 - <<'PY' | curl -s http://127.0.0.1:8089/submit \
+  -H "Authorization: Bearer ersultan_token_123" \
+  -H "Content-Type: application/json" \
+  --data-binary @-
+import json, subprocess
+pub = subprocess.check_output(["curl","-s","http://127.0.0.1:8089/rsa/publicKey"]).decode()
+print(json.dumps({"function":"RegisterUser","args":["Ersultan", pub, "", ""]}))
+PY
+echo
+
+6.
+cd /home/ruslan/working
+source venv/bin/activate
+
+export ML_AGENT_URL=http://127.0.0.1:8091
+export ML_AGENT_TOKEN=ml_token_123
+
+python3 server.py
+
+7. 
+cd /home/ruslan/working
+python3 -m http.server 8000
+
+8. 
+http://127.0.0.1:8000/

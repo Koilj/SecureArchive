@@ -1,0 +1,4218 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureData Archive · Operator Console</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+
+  <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsencrypt@3.3.2/bin/jsencrypt.min.js"></script>
+
+  <style>
+    :root {
+      --ink: #0c1524;
+      --muted: #5a6778;
+      --panel: #ffffff;
+      --wash: #f3f6fb;
+      --accent: #0b4f6c;
+      --accent-2: #1f6feb;
+      --accent-3: #0f766e;
+      --warning: #f59e0b;
+      --danger: #e11d48;
+      --shadow: 0 18px 40px rgba(12, 21, 36, 0.14);
+      --ring: 0 0 0 3px rgba(31, 111, 235, 0.18);
+    }
+    body.app-shell {
+      font-family: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 12% -10%, #dbeafe 0%, rgba(219, 234, 254, 0) 70%),
+        radial-gradient(900px 500px at 90% 0%, #ccfbf1 0%, rgba(204, 251, 241, 0) 65%),
+        linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.7)),
+        var(--wash);
+    }
+    code, .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    code { font-size: 0.85em; }
+    .table td { vertical-align: middle; }
+    .nav-tabs { border-bottom: 0; gap: 8px; }
+    .nav-tabs .nav-link {
+      font-weight: 600;
+      color: var(--muted);
+      border: 0;
+      border-radius: 999px;
+      background: #e9eef6;
+      padding: 8px 14px;
+      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
+    .nav-tabs .nav-link:hover { transform: translateY(-1px); }
+    .nav-tabs .nav-link.active {
+      color: #fff;
+      background: linear-gradient(120deg, var(--accent-2), var(--accent-3));
+      box-shadow: var(--shadow);
+    }
+    .muted-help { font-size: 12px; color: #6c757d; }
+    .card {
+      border: 0;
+      box-shadow: var(--shadow);
+      border-radius: 18px;
+      backdrop-filter: blur(2px);
+    }
+    .card-header { border-bottom: 1px solid #e2e8f0; background: #f9fbff; }
+    .kpi-card { background: var(--panel); }
+    .kpi-number { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+    .kpi-label { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .kpi-sub { color: var(--muted); font-size: 12px; }
+    .section-title { font-weight: 700; font-size: 18px; }
+    .pill-action { border-radius: 999px; }
+    .btn-primary {
+      background: linear-gradient(120deg, var(--accent-2), #2b7fff);
+      border-color: transparent;
+      box-shadow: 0 10px 24px rgba(31, 111, 235, 0.25);
+    }
+    .btn-primary:hover { filter: brightness(0.98); }
+    .btn-success { background: linear-gradient(120deg, #0f766e, #14b8a6); border-color: transparent; }
+    .btn-warning { background: linear-gradient(120deg, #f59e0b, #fbbf24); border-color: transparent; }
+    .btn-outline-dark { border-color: #94a3b8; color: #1f2937; }
+    .btn-outline-dark:hover { background: #e2e8f0; }
+    .btn:focus { box-shadow: var(--ring); }
+    .badge { border-radius: 999px; }
+    .table thead th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+    .table tbody tr:hover { background: #f7faff; }
+    .form-control, .form-select {
+      border-radius: 12px;
+      border-color: #d6e0ee;
+      box-shadow: none;
+    }
+    .form-control:focus, .form-select:focus { box-shadow: var(--ring); border-color: #9bb6f0; }
+    .alert { border: 0; border-radius: 14px; }
+    .fade-up { animation: fadeUp 420ms ease both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .role-security { display: none; }
+    body[data-role="SecurityService"] .role-security { display: block; }
+    body[data-role="SecurityService"] .role-nonsecurity { display: none; }
+    .role-security-cell { display: none; }
+    body[data-role="SecurityService"] .role-security-cell { display: table-cell; }
+    .bg-soft { background: #f8fafc; }
+    .list-tight .list-group-item { padding: 10px 12px; }
+  </style>
+</head>
+<body class="app-shell">
+<div class="container py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <div class="d-flex align-items-center gap-2">
+      <h3 class="m-0">🔐 SecureData Archive</h3>
+      <span class="badge bg-dark" id="activeProfileBadge">—</span>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <select id="profileSelect" class="form-select form-select-sm" style="width: 220px;">
+        <option value="Ruslan">Ruslan (Org1)</option>
+        <option value="Ersultan">Ersultan (Org2)</option>
+        <option value="SecurityService">SecurityService</option>
+        <option value="MLService">MLService</option>
+      </select>
+      <button class="btn btn-sm btn-primary" onclick="connectProfile()"><i class="bi bi-plug"></i> Activate</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="loadFiles()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+      <button class="btn btn-sm btn-outline-dark" onclick="editToken()"><i class="bi bi-key"></i> Tokens</button>
+    </div>
+  </div>
+
+  <ul class="nav nav-tabs" role="tablist" id="mainTabs">
+    <li class="nav-item" role="presentation" id="nav-dashboard">
+      <button class="nav-link active" id="tab-dashboard" data-bs-toggle="tab" data-bs-target="#pane-dashboard" type="button" role="tab">
+        <i class="bi bi-grid-1x2"></i> Dashboard
+      </button>
+    </li>
+    <li class="nav-item" role="presentation" id="nav-assets">
+      <button class="nav-link" id="tab-assets" data-bs-toggle="tab" data-bs-target="#pane-assets" type="button" role="tab">
+        <i class="bi bi-folder2-open"></i> Assets
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-requests" data-bs-toggle="tab" data-bs-target="#pane-requests" type="button" role="tab">
+        <i class="bi bi-inbox"></i> Access
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-activity" data-bs-toggle="tab" data-bs-target="#pane-activity" type="button" role="tab">
+        <i class="bi bi-clock-history"></i> Audit
+      </button>
+    </li>
+    <li class="nav-item" role="presentation" id="nav-security">
+      <button class="nav-link" id="tab-security" data-bs-toggle="tab" data-bs-target="#pane-security" type="button" role="tab">
+        <i class="bi bi-shield-lock"></i> Security
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-settings" data-bs-toggle="tab" data-bs-target="#pane-settings" type="button" role="tab">
+        <i class="bi bi-gear"></i> Settings
+      </button>
+    </li>
+  </ul>
+
+<div class="tab-content pt-3">
+
+<div class="tab-pane fade show active" id="pane-dashboard" role="tabpanel">
+  <div class="row g-3 mb-3">
+    <div class="col-lg-3 col-md-6 role-nonsecurity">
+      <div class="card kpi-card">
+        <div class="card-body">
+          <div class="kpi-label">My assets</div>
+          <div class="kpi-number" id="kpiOwned">—</div>
+          <div class="kpi-sub">Files you own</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6 role-nonsecurity">
+      <div class="card kpi-card">
+        <div class="card-body">
+          <div class="kpi-label">Available to me</div>
+          <div class="kpi-number" id="kpiAvailable">—</div>
+          <div class="kpi-sub">Approved access</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6 role-nonsecurity">
+      <div class="card kpi-card">
+        <div class="card-body">
+          <div class="kpi-label">My requests</div>
+          <div class="kpi-number" id="kpiRequests">—</div>
+          <div class="kpi-sub">Access requests</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6 role-nonsecurity">
+      <div class="card kpi-card">
+        <div class="card-body">
+          <div class="kpi-label">Needs review</div>
+          <div class="kpi-number" id="kpiNeedsReview">—</div>
+          <div class="kpi-sub">Your assets awaiting approval</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 role-security">
+      <div class="card kpi-card">
+        <div class="card-body">
+          <div class="kpi-label">Blocked users</div>
+          <div class="kpi-number" id="kpiBlocked">—</div>
+          <div class="kpi-sub">Currently blocked</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6 role-security">
+      <div class="card kpi-card">
+        <div class="card-body">
+          <div class="kpi-label">Denied events</div>
+          <div class="kpi-number" id="kpiDenied">—</div>
+          <div class="kpi-sub">Latest security alerts</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6 role-security">
+      <div class="card kpi-card">
+        <div class="card-body">
+          <div class="kpi-label">Pending requests</div>
+          <div class="kpi-number" id="kpiPending">—</div>
+          <div class="kpi-sub">Awaiting owner action</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6 role-security">
+      <div class="card kpi-card">
+        <div class="card-body">
+          <div class="kpi-label">Needs review</div>
+          <div class="kpi-number" id="kpiNeedsReviewSec">—</div>
+          <div class="kpi-sub">Unverified categories</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <div class="section-title">Recent events</div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="loadDashboard(true)"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+        </div>
+        <div class="card-body" id="dashRecentEvents">
+          <div class="text-muted">Open dashboard to load.</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <div class="section-title">Session snapshot</div>
+          <span class="badge bg-dark" id="dashProfileName">—</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-2">
+            <div class="col-12"><div class="text-muted small">ClientID</div><div class="mono" id="dashClientId">—</div></div>
+            <div class="col-6"><div class="text-muted small">Role</div><div id="dashRole">—</div></div>
+            <div class="col-6"><div class="text-muted small">Department</div><div id="dashDept">—</div></div>
+            <div class="col-12"><div class="text-muted small">MSP</div><div id="dashMspId">—</div></div>
+          </div>
+          <div class="mt-3">
+            <button class="btn btn-sm btn-outline-secondary" onclick="refreshIdentity(true)"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tab-pane fade" id="pane-assets" role="tabpanel">
+
+  <div class="card mb-3 shadow-sm" id="identityCard">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-3">
+                    <div class="text-muted small">Agent</div>
+                    <div><code id="idAgent">—</code></div>
+                </div>
+                <div class="col-md-5">
+                    <div class="text-muted small">ClientID (Fabric)</div>
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <code id="idClient" style="word-break:break-all;">—</code>
+                        <button class="btn btn-sm btn-outline-secondary py-0" onclick="copyElText('idClient')"><i class="bi bi-clipboard"></i></button>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="text-muted small">MSP</div>
+                    <div id="idMsp">—</div>
+                </div>
+                <div class="col-md-1">
+                    <div class="text-muted small">Role</div>
+                    <span class="badge bg-secondary" id="idRole">—</span>
+                </div>
+                <div class="col-md-1">
+                    <div class="text-muted small">Dept</div>
+                    <div id="idDept">—</div>
+                </div>
+            </div>
+            <div class="mt-2 small" id="idBlockLine"></div>
+        </div>
+    </div>
+
+    <div id="assetsNotice" class="mb-3"></div>
+
+
+  <div class="card mb-3 shadow-sm">
+        <div class="card-header bg-white">
+            <b>Upload Encrypted File</b>
+        </div>
+        <div class="card-body">
+          <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+            <span class="badge bg-dark">Step 1</span>
+            <span class="small text-muted">File + abstract</span>
+            <span class="badge bg-secondary">Step 2</span>
+            <span class="small text-muted">Metadata</span>
+            <span class="badge bg-secondary">Step 3</span>
+            <span class="small text-muted">Result &amp; AI suggestion</span>
+          </div>
+          <div class="row g-2">
+                <div class="col-md-6">
+                    <input type="file" id="fileInput" class="form-control form-control-sm">
+                    <small class="text-muted">Filename policy: YYYYMMDD_Author_Topic.ext</small>
+                </div>
+                <div class="col-md-6">
+                    <input type="text" id="fileDesc" class="form-control form-control-sm" placeholder="Abstract (for AI)">
+                </div>
+            </div>
+
+            <hr class="my-3">
+
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <input type="text" id="metaTitle" class="form-control form-control-sm" placeholder="Title">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" id="metaAuthors" class="form-control form-control-sm" placeholder="Authors">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" id="metaDiscipline" class="form-control form-control-sm" placeholder="Discipline">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" id="metaLicense" class="form-control form-control-sm" placeholder="License">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" id="metaDOI" class="form-control form-control-sm" placeholder="DOI">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" id="metaKeywords" class="form-control form-control-sm" placeholder="Keywords">
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-3">
+                <button id="btnUpload" class="btn btn-sm btn-success" onclick="uploadFile()">Upload</button>
+            </div>
+            <div id="uploadResult" class="mt-3 d-none"></div>
+        </div>
+    </div>
+
+    
+    
+
+  <div class="card shadow-sm">
+        
+<div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+  <div>
+    <b>Files (from Blockchain)</b>
+    <div class="text-muted small">Fabric via local agent (per-user)</div>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    <div class="input-group input-group-sm" style="width: min(420px, 100%);">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input id="assetSearchInput" class="form-control" placeholder="Search assets (ID, title, authors, CID…)">
+      <button class="btn btn-outline-secondary" id="assetSearchClear" type="button"><i class="bi bi-x-lg"></i></button>
+    </div>
+  </div>
+  <select id="assetFilterSelect" class="form-select form-select-sm" style="width:auto;">
+    <option value="all">All</option>
+    <option value="owned">Owned</option>
+    <option value="available">Available to me</option>
+    <option value="pending">My pending</option>
+    <option value="needs_review">Needs review</option>
+    <option value="denied">Denied</option>
+  </select>
+  <span class="text-muted small" id="assetFilterCount"></span>
+</div>
+
+
+        <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle m-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="min-width:160px;">Asset ID</th>
+                        <th style="min-width:180px;">Title</th>
+                        <th>Authors</th>
+                        <th style="min-width:140px;">Official category</th>
+                        <th style="min-width:170px;">AI suggestion</th>
+                        <th style="min-width:220px;" class="role-security-cell">CID</th>
+                        <th>Status</th>
+                        <th style="min-width:320px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="filesTable">
+                    <tr><td colspan="8" class="text-center text-muted">No data loaded.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    
+
+  <div class="card mt-3 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <b>Developer log</b>
+      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#logCollapse">
+        <i class="bi bi-terminal"></i> Toggle
+      </button>
+    </div>
+    <div id="logCollapse" class="collapse">
+      <div class="card-body p-0">
+        <pre id="logBox" style="height: 220px; overflow:auto;" class="m-0 p-2"></pre>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+  
+<div class="tab-pane fade" id="pane-requests" role="tabpanel">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+      <h5 class="mb-0">Access requests</h5>
+      <div class="muted-help">Inbound = requests to your assets. Outbound = requests you created.</div>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" onclick="loadRequestsView()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+  </div>
+
+  
+  <div id="requestsNotice" class="mb-2"></div>
+<div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white"><b>My outbound requests</b></div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm m-0">
+              <thead>
+                <tr>
+                  <th>Asset</th>
+                  <th>Status</th>
+                  <th>Reason</th>
+                  <th>Updated</th>
+                  <th style="min-width:220px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="myRequestsTable">
+                <tr><td colspan="5" class="text-muted text-center">Open this tab to load.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white"><b>Inbox (pending)</b></div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm m-0">
+              <thead>
+                <tr>
+                  <th>Asset</th>
+                  <th>Requester</th>
+                  <th>Reason</th>
+                  <th>Updated</th>
+                  <th style="min-width:180px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inboxRequestsTable">
+                <tr><td colspan="5" class="text-muted text-center">Open this tab to load.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  
+<div class="tab-pane fade" id="pane-activity" role="tabpanel">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+      <h5 class="mb-0">Audit & downloads</h5>
+      <div class="muted-help">Shows actions (audit events) and download logs. SecurityService can query more broadly.</div>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" onclick="loadActivityView()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <b>Audit events by actor</b>
+          <div class="d-flex gap-2 align-items-center">
+            <input id="activityEventType" class="form-control form-control-sm mono" placeholder="eventType (SecurityService)" style="width: 210px;">
+            <input id="activityActorId" class="form-control form-control-sm mono" placeholder="clientID (actor)" style="width: 250px;">
+            <button class="btn btn-sm btn-outline-primary" onclick="loadActivityView()">Load</button>
+          </div>
+        </div>
+        <div class="card-body" id="activityOut">
+          <div class="text-muted">Open this tab to load.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <b>Download logs by user</b>
+          <div class="d-flex gap-2 align-items-center">
+            <input id="downloadsUserId" class="form-control form-control-sm mono" placeholder="clientID (user)" style="width: 250px;">
+            <button class="btn btn-sm btn-outline-primary" onclick="loadActivityView()">Load</button>
+          </div>
+        </div>
+        <div class="card-body" id="downloadsOut">
+          <div class="text-muted">Open this tab to load.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  
+<div class="tab-pane fade" id="pane-security" role="tabpanel">
+  <div class="alert alert-info py-2" id="securityNotice">
+    <b>Security tab</b> is available only when the active agent has role <code>SecurityService</code>.
+    Switch profile to <b>SecurityService</b> and click <b>Activate</b>.
+  </div>
+  <div id="setupChecklistWrap" class="mb-3 d-none">
+    <div class="row g-3">
+      <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <div><i class="bi bi-check2-square"></i> Setup checklist</div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" id="btnDashOpenTokens" type="button">
+              <i class="bi bi-key"></i> Tokens
+            </button>
+            <button class="btn btn-sm btn-outline-primary" id="btnDashRefresh" type="button">
+              <i class="bi bi-arrow-repeat"></i> Refresh
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+              <div class="fw-semibold">Agents</div>
+              <div class="small text-muted">Health + token presence</div>
+            </div>
+            <div class="col-md-8" id="dashAgentBadges">—</div>
+          </div>
+
+          <hr class="my-3"/>
+
+          <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+              <div class="fw-semibold">Backend</div>
+              <div class="small text-muted">server.py (API_URL)</div>
+            </div>
+            <div class="col-md-8">
+              <span class="badge bg-secondary" id="dashBackendBadge">—</span>
+              <span class="small text-muted ms-2 mono" id="dashBackendDetail"></span>
+            </div>
+          </div>
+
+          <hr class="my-3"/>
+
+          <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+              <div class="fw-semibold">IPFS</div>
+              <div class="small text-muted">127.0.0.1:5001</div>
+            </div>
+            <div class="col-md-8">
+              <span class="badge bg-secondary" id="dashIpfsBadge">—</span>
+              <span class="small text-muted ms-2 mono" id="dashIpfsDetail"></span>
+            </div>
+          </div>
+
+          <hr class="my-3"/>
+
+          <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+              <div class="fw-semibold">Ledger registration</div>
+              <div class="small text-muted">Profile must call RegisterUser</div>
+            </div>
+            <div class="col-md-8 d-flex flex-wrap gap-2 align-items-center">
+              <span class="badge bg-secondary" id="dashRegBadge">—</span>
+              <span class="small text-muted mono" id="dashRegDetail"></span>
+              <button class="btn btn-sm btn-outline-success ms-auto" id="btnDashRegister" type="button" style="display:none;">
+                <i class="bi bi-person-plus"></i> Register
+              </button>
+            </div>
+          </div>
+
+          <hr class="my-3"/>
+
+          <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+              <div class="fw-semibold">ML binding</div>
+              <div class="small text-muted">Bind MLService → identity (SecurityService only)</div>
+            </div>
+            <div class="col-md-8 d-flex flex-wrap gap-2 align-items-center">
+              <span class="badge bg-secondary" id="dashMlBadge">—</span>
+              <span class="small text-muted mono" id="dashMlDetail"></span>
+              <button class="btn btn-sm btn-outline-danger ms-auto" id="btnDashBindMl" type="button" style="display:none;">
+                <i class="bi bi-link-45deg"></i> Bind MLService
+              </button>
+            </div>
+          </div>
+
+          <div class="alert alert-info mt-3 mb-0">
+            <div class="fw-semibold"><i class="bi bi-info-circle"></i> Governance rule</div>
+            <div class="small">
+              Upload creates assets as <b>Unverified</b> and marks <b>NeedsManualReview</b>. In most flows you must approve the category before granting access.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <div id="riskDashboard" class="card shadow-sm mb-3 d-none">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <div class="section-title">Risk dashboard</div>
+      <button class="btn btn-sm btn-outline-secondary" onclick="loadRiskDashboard()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-lg-4">
+          <div class="fw-semibold mb-1">Top suspicious users</div>
+          <div id="riskTopUsers" class="small text-muted">Open Security tab to load.</div>
+        </div>
+        <div class="col-lg-4">
+          <div class="fw-semibold mb-1">Recent alerts</div>
+          <div id="riskAlerts" class="small text-muted">Open Security tab to load.</div>
+        </div>
+        <div class="col-lg-4">
+          <div class="fw-semibold mb-1">Blocked users</div>
+          <div id="riskBlockedUsers" class="small text-muted">Open Security tab to load.</div>
+        </div>
+      </div>
+      <hr class="my-3"/>
+      <div>
+        <div class="fw-semibold mb-2">Evidence trail</div>
+        <div class="d-flex gap-2 mb-2">
+          <input id="riskEvidenceUserId" class="form-control form-control-sm mono" placeholder="clientID to investigate">
+          <button class="btn btn-sm btn-outline-primary" onclick="loadEvidenceTrail()">Load</button>
+        </div>
+        <div id="riskEvidenceOut" class="small text-muted">Select a user to view audit + download evidence.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="securityPanel" class="card shadow-sm mb-3 d-none">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="m-0">🛡️ SecurityService Console</h5>
+                <small class="text-muted">Block/Unblock users + status</small>
+            </div>
+            <hr class="my-2">
+
+            <div class="row g-2 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label small mb-1">Target user clientID</label>
+                    <input id="secTargetId" class="form-control form-control-sm" placeholder="Paste clientID (from WhoAmI)">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small mb-1">Reason</label>
+                    <input id="secReason" class="form-control form-control-sm" value="spam denied requests">
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                <button class="btn btn-sm btn-danger" onclick="secBlock()">Block</button>
+                <button class="btn btn-sm btn-outline-success" onclick="secUnblock()">Unblock</button>
+                <button class="btn btn-sm btn-outline-primary" onclick="secCheck()">Is blocked?</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="secListBlocked()">List blocked</button>
+            </div>
+
+            <pre id="secOut" class="mt-2 p-2 bg-dark text-light rounded" style="max-height:180px; overflow:auto; font-size:12px;"></pre>
+        </div>
+    </div>
+
+</div>
+
+  
+<div class="tab-pane fade" id="pane-settings" role="tabpanel">
+  <div class="card shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <b>Settings</b>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-dark" onclick="openConnectionsModal()"><i class="bi bi-key"></i> Manage tokens</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="checkHealthAll()"><i class="bi bi-activity"></i> Check health</button>
+      </div>
+    </div>
+    <div class="card-body">
+      
+<div class="card mb-3">
+  <div class="card-header bg-white d-flex justify-content-between align-items-center">
+    <b>Session &amp; Identity</b>
+    <button class="btn btn-sm btn-outline-secondary" type="button" onclick="refreshIdentity(true)"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+  </div>
+  <div class="card-body">
+    <div class="row g-2">
+      <div class="col-md-4">
+        <div class="text-muted small">Active agent</div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <span class="badge bg-secondary" id="sessProfile">—</span>
+          <code class="mono" id="sessAgentUrl">—</code>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="text-muted small">Token</div>
+        <div id="sessTokenState">—</div>
+      </div>
+      <div class="col-md-4">
+        <div class="text-muted small">Role / Department</div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <span class="badge bg-secondary" id="sessRole">—</span>
+          <span class="text-muted" id="sessDept">—</span>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="text-muted small">ClientID (Fabric)</div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <code class="mono" id="sessClient" style="word-break:break-all;">—</code>
+          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="copyElText('sessClient')"><i class="bi bi-clipboard"></i></button>
+          <span class="text-muted small" id="sessMsp"></span>
+        </div>
+      </div>
+    </div>
+
+    <hr class="my-3"/>
+
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <button class="btn btn-sm btn-outline-dark" type="button" onclick="openConnectionsModal()"><i class="bi bi-key"></i> Manage tokens</button>
+      <button class="btn btn-sm btn-outline-success ms-auto" id="btnSettingsRegister" type="button" onclick="registerIdentity()"><i class="bi bi-person-plus"></i> Register on-ledger</button>
+    </div>
+    <div class="mt-2">
+      <span class="badge bg-secondary" id="sessRegBadge">—</span>
+      <span class="text-muted small ms-2" id="sessRegDetail"></span>
+    </div>
+  </div>
+</div>
+<div class="mb-2"><span class="text-muted">Backend API:</span> <code class="mono">http://127.0.0.1:5500</code> (server.py)</div>
+      <div class="mb-2"><span class="text-muted">Agents:</span> <code class="mono">8088 / 8089 / 8090 / 8091</code></div>
+      <div class="muted-help">
+        Tokens are stored locally in your browser and are required for <code>/eval</code> and <code>/submit</code>. Use <b>Manage tokens</b>.
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</div>
+
+<!-- Asset Drawer: realistic "details + audit + access" in one place -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="assetDrawer" aria-labelledby="assetDrawerLabel">
+  <div class="offcanvas-header">
+    <div>
+      <h5 class="offcanvas-title" id="assetDrawerLabel">Asset</h5>
+      <div class="text-muted small" id="assetDrawerSub">—</div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div id="drawerAlerts"></div>
+
+    <div class="d-flex flex-wrap gap-2 mb-2">
+      <button class="btn btn-sm btn-outline-primary" id="drawerBtnRequest" onclick="drawerRequestAccess()">Request access</button>
+      <button class="btn btn-sm btn-outline-success" id="drawerBtnDownload" onclick="drawerDownload()">Download</button>
+      <button class="btn btn-sm btn-warning d-none" id="drawerBtnApprove" onclick="drawerApproveCategory()">Approve category</button>
+      <button class="btn btn-sm btn-outline-danger d-none" id="drawerBtnRotate" onclick="drawerRotate()">Rotate</button>
+    </div>
+
+    <div id="drawerOwnerPanel" class="mb-2"></div>
+
+    <ul class="nav nav-tabs" id="drawerTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-overview" data-bs-toggle="tab" data-bs-target="#pane-overview" type="button" role="tab">Overview</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-access" data-bs-toggle="tab" data-bs-target="#pane-access" type="button" role="tab">Access</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-audit" data-bs-toggle="tab" data-bs-target="#pane-audit" type="button" role="tab">Audit</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-downloads" data-bs-toggle="tab" data-bs-target="#pane-downloads" type="button" role="tab">Downloads</button>
+      </li>
+    </ul>
+
+    <div class="tab-content pt-3">
+      <div class="tab-pane fade show active" id="pane-overview" role="tabpanel">
+        <div id="drawerOverview" class="small text-muted">Loading…</div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-access" role="tabpanel">
+        <div id="drawerAccess" class="small text-muted">Loading…</div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-audit" role="tabpanel">
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="small text-muted">On-chain audit events (owner or SecurityService)</div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="drawerReloadAudit()"><i class="bi bi-arrow-clockwise"></i></button>
+        </div>
+        <div id="drawerAudit" class="mt-2">Loading…</div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-downloads" role="tabpanel">
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="small text-muted">Download audit records (owner or SecurityService)</div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="drawerReloadDownloads()"><i class="bi bi-arrow-clockwise"></i></button>
+        </div>
+        <div id="drawerDownloads" class="mt-2">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade" id="metadataModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Metadata</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="metadataModalBody">
+        <div class="text-center text-muted">Loading...</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Toasts -->
+<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 2000;"></div>
+
+<!-- Confirm modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmModalTitle">Confirm</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="confirmModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" id="confirmModalCancel" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmModalOk">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Prompt modal -->
+<div class="modal fade" id="promptModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="promptModalTitle">Input</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label" id="promptModalLabel"></label>
+        <div id="promptModalInputWrap"></div>
+        <div class="muted-help mt-2" id="promptModalHelp"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" id="promptModalCancel" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="promptModalOk">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Access request modal -->
+<div class="modal fade" id="accessRequestModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Request access</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label">Reason</label>
+          <select id="accessReasonSelect" class="form-select">
+            <option value="Research">Research</option>
+            <option value="Audit">Audit</option>
+            <option value="Task">Task</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Details (optional)</label>
+          <textarea id="accessReasonDetails" class="form-control" rows="3" placeholder="Add short context for the owner"></textarea>
+        </div>
+        <div class="muted-help mt-2">Owners see this reason before approving access.</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="accessRequestSubmit">Submit request</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Approve category modal -->
+<div class="modal fade" id="approveModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Approve category</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-md-4"><span class="text-muted">Asset:</span> <code id="approveAssetId">—</code></div>
+          <div class="col-md-4"><span class="text-muted">Current:</span> <b id="approveCurrent">—</b></div>
+          <div class="col-md-4"><span class="text-muted">Needs review:</span> <b id="approveNeedsReview">—</b></div>
+          <div class="col-md-8 mt-2"><span class="text-muted">Suggested:</span> <b id="approveSuggested">—</b> <span class="text-muted small" id="approveConfidence">—</span></div>
+        </div>
+        <hr class="my-2">
+        <label class="form-label">Approved category</label>
+        <input id="approveCategoryInput" class="form-control" placeholder="e.g. Finance / HR / Research / Public" />
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" id="approveAck">
+          <label class="form-check-label" for="approveAck">
+            I reviewed the asset metadata and accept responsibility for this classification.
+          </label>
+        </div>
+        <div class="muted-help mt-2">
+          Tip: keep categories consistent across assets (same spelling + casing).
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" id="approveModalOk">Approve</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Connections / tokens modal -->
+<div class="modal fade" id="connectionsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Agent connections (local)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="muted-help mb-2">
+          Tokens are stored <b>only</b> in your browser localStorage and are sent only to <code>http://127.0.0.1:8088-8091</code>.
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <button class="btn btn-sm btn-outline-secondary" onclick="fillDevTokens()"><i class="bi bi-magic"></i> Prefill dev tokens</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="checkHealthAll()"><i class="bi bi-activity"></i> Re-check health</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th style="width:180px;">Profile</th>
+                <th>Endpoint</th>
+                <th style="width:260px;">Token</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>Ruslan</b></td>
+                <td class="mono" id="url_Ruslan">—</td>
+                <td><input class="form-control form-control-sm mono" id="tok_Ruslan" placeholder="ruslan_token_123"></td>
+              </tr>
+              <tr>
+                <td><b>Ersultan</b></td>
+                <td class="mono" id="url_Ersultan">—</td>
+                <td><input class="form-control form-control-sm mono" id="tok_Ersultan" placeholder="ersultan_token_123"></td>
+              </tr>
+              <tr>
+                <td><b>SecurityService</b></td>
+                <td class="mono" id="url_SecurityService">—</td>
+                <td><input class="form-control form-control-sm mono" id="tok_SecurityService" placeholder="security_token_123"></td>
+              </tr>
+              <tr>
+                <td><b>MLService</b></td>
+                <td class="mono" id="url_MLService">—</td>
+                <td><input class="form-control form-control-sm mono" id="tok_MLService" placeholder="ml_token_123"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="saveConnectionsModal()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+const API_URL = "http://127.0.0.1:5500";
+
+    // Per-user agent ports:
+    const AGENTS = {
+        "Ruslan": "http://127.0.0.1:8088",
+        "Ersultan": "http://127.0.0.1:8089",
+        "SecurityService": "http://127.0.0.1:8090",
+        "MLService": "http://127.0.0.1:8091"
+    };
+
+    function agentBase() {
+        return AGENTS[CURRENT_USER] || "http://127.0.0.1:8088";
+    }
+
+// ============================
+// Connections / tokens (Operator Console for 4 agents)
+// ============================
+const PROFILE_KEY = "activeProfile";
+function profileKeyToken(p) { return `agentToken_${p}`; }
+
+function getActiveProfile() {
+    return (localStorage.getItem(PROFILE_KEY) || CURRENT_USER || "Ruslan").trim() || "Ruslan";
+}
+
+function setActiveProfile(p) {
+    CURRENT_USER = p;
+    localStorage.setItem(PROFILE_KEY, p);
+    const sel = document.getElementById("profileSelect");
+    if (sel) sel.value = p;
+    const badge = document.getElementById("activeProfileBadge");
+    if (badge) badge.textContent = p;
+    try { renderSessionPanel(); } catch {}
+    try { renderNotices(); } catch {}
+}
+
+function getAgentToken() {
+    return (localStorage.getItem(profileKeyToken(CURRENT_USER)) || "").trim();
+}
+
+function setAgentTokenForProfile(profile, token) {
+    const v = (token || "").trim();
+    if (!v) localStorage.removeItem(profileKeyToken(profile));
+    else localStorage.setItem(profileKeyToken(profile), v);
+}
+
+async function openConnectionsModal(focusProfile = null) {
+    if (!uiHasBootstrap()) {
+        // fallback
+        const t = window.prompt("Enter token for " + CURRENT_USER, getAgentToken());
+        if (t !== null) setAgentTokenForProfile(CURRENT_USER, t);
+        return;
+    }
+
+    // Fill table inputs
+    for (const [p, url] of Object.entries(AGENTS)) {
+        const tok = localStorage.getItem(profileKeyToken(p)) || "";
+        const tokEl = document.getElementById(`tok_${p}`);
+        const urlEl = document.getElementById(`url_${p}`);
+        if (tokEl) tokEl.value = tok;
+        if (urlEl) urlEl.textContent = url;
+    }
+    if (focusProfile) {
+        const tokEl = document.getElementById(`tok_${focusProfile}`);
+        if (tokEl) setTimeout(() => tokEl.focus(), 150);
+    }
+
+    const mEl = document.getElementById("connectionsModal");
+    const modal = bootstrap.Modal.getOrCreateInstance(mEl, { backdrop: "static" });
+    modal.show();
+}
+
+function saveConnectionsModal() {
+    for (const p of Object.keys(AGENTS)) {
+        const tokEl = document.getElementById(`tok_${p}`);
+        if (tokEl) setAgentTokenForProfile(p, tokEl.value);
+    }
+    showToast("Tokens saved locally", "success");
+    checkHealthAll();
+}
+
+function fillDevTokens() {
+    // Convenience for your local dev setup. Edit/remove as needed.
+    const defaults = {
+        "Ruslan": "ruslan_token_123",
+        "Ersultan": "ersultan_token_123",
+        "SecurityService": "security_token_123",
+        "MLService": "ml_token_123"
+    };
+    for (const [p, t] of Object.entries(defaults)) {
+        const el = document.getElementById(`tok_${p}`);
+        if (el && !el.value) el.value = t;
+    }
+    showToast("Dev tokens prefilled (not sent anywhere)", "info");
+}
+
+async function ensureAgentToken(forceUI = false) {
+    const t = getAgentToken();
+    if (t && !forceUI) return true;
+    await openConnectionsModal(CURRENT_USER);
+    return !!getAgentToken();
+}
+
+async function editToken() {
+    await openConnectionsModal(CURRENT_USER);
+}
+
+async function handleUnauthorizedOnce() {
+    showToast("Unauthorized: set correct token for this agent", "warning");
+    await openConnectionsModal(CURRENT_USER);
+    if (!getAgentToken()) throw new Error("unauthorized");
+}
+
+    function agentAuthHeaders() {
+        const h = { "Content-Type": "application/json" };
+        const t = getAgentToken();
+        if (t) h["Authorization"] = "Bearer " + t;
+        return h;
+    }
+
+
+    const ASSET_CACHE = {};
+
+    // Prevent XSS in dynamic table rendering
+    function escapeHtml(value) {
+        if (value === null || value === undefined) return "";
+        return String(value).replace(/[&<>"'`=\/]/g, (s) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+            "`": "&#x60;",
+            "=": "&#x3D;",
+            "/": "&#x2F;",
+            "\\": "&#x5C;"
+        }[s] || s));
+    }
+
+// Escape string for single-quoted JS literal in inline handlers
+function jsQuote(value){
+    if (value === null || value === undefined) return "";
+    return String(value).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+function setRoleClass(role) {
+  const r = (role || "").trim();
+  document.body.dataset.role = r || "unknown";
+}
+
+function toggleEl(id, show) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle("d-none", !show);
+}
+
+function setAssetsFilter(mode) {
+  if (mode === "requests") {
+    showMainTab("#pane-requests");
+    return;
+  }
+  const sel = document.getElementById("assetFilterSelect");
+  if (sel && mode) sel.value = mode;
+  applyAssetSearchFilter();
+  showMainTab("#pane-assets");
+}
+
+
+
+ // ============================
+// UI helpers (no native prompt/confirm/alert in "product" UI)
+// ============================
+function uiHasBootstrap() {
+    return !!(window.bootstrap && bootstrap.Modal);
+}
+
+function showToast(message, tone = "info") {
+    // tone: "success" | "danger" | "warning" | "info"
+    const wrap = document.getElementById("toastContainer");
+    if (!wrap) return;
+    const id = "t" + Math.random().toString(16).slice(2);
+    const html = `
+      <div id="${id}" class="toast align-items-center text-bg-${tone} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body">${escapeHtml(message)}</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      </div>
+    `;
+    wrap.insertAdjacentHTML("beforeend", html);
+    const el = document.getElementById(id);
+    const t = bootstrap.Toast.getOrCreateInstance(el, { delay: 3200 });
+    el.addEventListener("hidden.bs.toast", () => el.remove());
+    t.show();
+}
+
+async function uiConfirm({ title = "Confirm", body = "", okText = "Confirm", cancelText = "Cancel", okClass = "btn-primary" } = {}) {
+    if (!uiHasBootstrap()) return window.confirm(`${title}\n\n${body}`);
+    return new Promise((resolve) => {
+        const mEl = document.getElementById("confirmModal");
+        document.getElementById("confirmModalTitle").textContent = title;
+        document.getElementById("confirmModalBody").innerHTML = body;
+        const okBtn = document.getElementById("confirmModalOk");
+        okBtn.textContent = okText;
+        okBtn.className = `btn ${okClass}`;
+        document.getElementById("confirmModalCancel").textContent = cancelText;
+
+        const modal = bootstrap.Modal.getOrCreateInstance(mEl, { backdrop: "static" });
+
+        const cleanup = () => {
+            okBtn.onclick = null;
+            mEl.removeEventListener("hidden.bs.modal", onHidden);
+        };
+
+        const onHidden = () => {
+            cleanup();
+            resolve(false);
+        };
+
+        okBtn.onclick = () => {
+            cleanup();
+            modal.hide();
+            resolve(true);
+        };
+
+        mEl.addEventListener("hidden.bs.modal", onHidden);
+        modal.show();
+    });
+}
+
+async function uiPrompt({ title = "Input", label = "", value = "", placeholder = "", help = "", okText = "OK", cancelText = "Cancel", multiline = false } = {}) {
+    if (!uiHasBootstrap()) return window.prompt(`${title}\n${label}`, value);
+    return new Promise((resolve) => {
+        const mEl = document.getElementById("promptModal");
+        document.getElementById("promptModalTitle").textContent = title;
+        document.getElementById("promptModalLabel").textContent = label || "";
+        document.getElementById("promptModalHelp").textContent = help || "";
+
+        const inputWrap = document.getElementById("promptModalInputWrap");
+        inputWrap.innerHTML = multiline
+            ? `<textarea id="promptModalInput" class="form-control" rows="3" placeholder="${escapeHtml(placeholder)}"></textarea>`
+            : `<input id="promptModalInput" class="form-control" placeholder="${escapeHtml(placeholder)}">`;
+
+        const inputEl = document.getElementById("promptModalInput");
+        inputEl.value = value || "";
+
+        const okBtn = document.getElementById("promptModalOk");
+        okBtn.textContent = okText;
+        document.getElementById("promptModalCancel").textContent = cancelText;
+
+        const modal = bootstrap.Modal.getOrCreateInstance(mEl, { backdrop: "static" });
+
+        const cleanup = () => {
+            okBtn.onclick = null;
+            mEl.removeEventListener("hidden.bs.modal", onHidden);
+        };
+
+        const onHidden = () => {
+            cleanup();
+            resolve(null);
+        };
+
+        okBtn.onclick = () => {
+            const v = (inputEl.value || "").trim();
+            cleanup();
+            modal.hide();
+            resolve(v);
+        };
+
+        mEl.addEventListener("hidden.bs.modal", onHidden);
+        modal.show();
+        setTimeout(() => inputEl.focus(), 50);
+    });
+}
+
+async function uiAlert({ title = "Notice", body = "", tone = "info", okText = "OK" } = {}) {
+    if (!uiHasBootstrap()) { window.alert(`${title}\n\n${body}`); return; }
+    await uiConfirm({ title, body: `<div class="alert alert-${tone} py-2 mb-0">${escapeHtml(humanizeErrorText(body))}</div>`, okText, cancelText: "", okClass: "btn-primary" });
+}
+
+async function openAccessRequestModal() {
+  if (!uiHasBootstrap()) {
+    const reason = await uiPrompt({title:"Access request", label:"Reason (optional)", placeholder:"Why do you need access?", value:"", multiline:true, okText:"Submit request"});
+    return (reason === null) ? null : (reason || "");
+  }
+
+  return new Promise((resolve) => {
+    const mEl = document.getElementById("accessRequestModal");
+    const reasonSel = document.getElementById("accessReasonSelect");
+    const detailsEl = document.getElementById("accessReasonDetails");
+    if (reasonSel) reasonSel.value = "Research";
+    if (detailsEl) detailsEl.value = "";
+
+    const okBtn = document.getElementById("accessRequestSubmit");
+    const modal = bootstrap.Modal.getOrCreateInstance(mEl, { backdrop: "static" });
+
+    const cleanup = () => {
+      okBtn.onclick = null;
+      mEl.removeEventListener("hidden.bs.modal", onHidden);
+    };
+
+    const onHidden = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    okBtn.onclick = () => {
+      const reason = (reasonSel?.value || "").trim() || "Other";
+      const details = (detailsEl?.value || "").trim();
+      const msg = details ? `[${reason}] ${details}` : `[${reason}]`;
+      cleanup();
+      modal.hide();
+      resolve(msg);
+    };
+
+    mEl.addEventListener("hidden.bs.modal", onHidden);
+    modal.show();
+    setTimeout(() => reasonSel?.focus(), 50);
+  });
+}
+
+
+    
+    function maskToken(t) {
+    if (!t) return "";
+    if (t.length <= 8) return "••••";
+    return t.slice(0,4) + "••••" + t.slice(-4);
+}
+
+function humanizeErrorText(text) {
+    const t = (text || "").toString();
+    const tl = t.toLowerCase();
+
+    if (tl.includes("failed to fetch")) return "Не удалось связаться с агентом/бекендом. Проверь, что сервис запущен и адрес/порт верный.";
+    if (tl.includes("unauthorized") || tl.includes("401")) return "Unauthorized: проверь токен для выбранного агента (Settings → Manage tokens).";
+    if (tl.includes("registeruser") && tl.includes("first")) return "Профиль не зарегистрирован в сети. Открой Settings → Session & Identity → Register on-ledger.";
+    if (tl.includes("abac") && tl.includes("deny")) return "Отклонено политикой доступа (ABAC). Проверь role/department пользователя и категорию ассета.";
+    if (tl.includes("approvecategory")) return "Категория ассета ещё не подтверждена. Владелец должен выполнить ApproveCategory.";
+    if (tl.includes("service mlservice is not bound")) return "MLService не привязан. SecurityService должен выполнить BindServiceIdentity.";
+    if (tl.includes("caller is not bound") && tl.includes("mlservice")) return "MLService token/identity не совпадает с привязанным clientID (binding mismatch).";
+
+    return t;
+}
+
+function showSettingsTab() {
+    try {
+        const btn = document.querySelector('button[data-bs-target="#pane-settings"]');
+        if (btn && window.bootstrap) bootstrap.Tab.getOrCreateInstance(btn).show();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {}
+}
+
+function renderSessionPanel() {
+    const prof = document.getElementById("sessProfile");
+    if (prof) prof.textContent = CURRENT_USER || "—";
+    setEl("sessAgentUrl", agentBase());
+
+    const tok = getAgentToken();
+    if (tok) {
+        setHtml("sessTokenState", `<span class="badge bg-success">SET</span> <code class="mono">${escapeHtml(maskToken(tok))}</code>`);
+    } else {
+        setHtml("sessTokenState", `<span class="badge bg-warning text-dark">MISSING</span> <span class="text-muted small">token not set</span>`);
+    }
+
+    const role = (IDENTITY && IDENTITY.role) ? IDENTITY.role : "—";
+    const dept = (IDENTITY && IDENTITY.department) ? IDENTITY.department : "—";
+    const msp  = (IDENTITY && IDENTITY.mspID) ? IDENTITY.mspID : "";
+    setRoleClass(role === "—" ? "" : role);
+
+    const roleEl = document.getElementById("sessRole");
+    if (roleEl) {
+        roleEl.textContent = role;
+        roleEl.className = "badge " + (role === "SecurityService" ? "bg-danger" : "bg-secondary");
+    }
+    setEl("sessDept", dept);
+    setEl("sessClient", (IDENTITY && IDENTITY.clientID) ? IDENTITY.clientID : "—");
+    setEl("sessMsp", msp ? ("MSP: " + msp) : "");
+
+    // Registration badge
+    const rb = document.getElementById("sessRegBadge");
+    const rd = document.getElementById("sessRegDetail");
+    if (rb && rd) {
+        if (!tok) {
+            rb.className = "badge bg-warning text-dark";
+            rb.textContent = "NEED TOKEN";
+            rd.textContent = "Set token to check registration";
+        } else if (!IDENTITY || !IDENTITY.clientID) {
+            rb.className = "badge bg-secondary";
+            rb.textContent = "—";
+            rd.textContent = "";
+        } else if (IDENTITY.registered === true) {
+            rb.className = "badge bg-success";
+            rb.textContent = "REGISTERED";
+            rd.textContent = "On-chain profile exists";
+        } else if (IDENTITY.registered === false) {
+            rb.className = "badge bg-danger";
+            rb.textContent = "NOT REGISTERED";
+            rd.textContent = "Click “Register on-ledger”";
+        } else {
+            rb.className = "badge bg-secondary";
+            rb.textContent = "CHECK";
+            rd.textContent = "…";
+        }
+    }
+
+    // Disable register button if no token
+    const br = document.getElementById("btnSettingsRegister");
+    if (br) br.disabled = !tok;
+}
+
+function renderNotices() {
+    const tok = getAgentToken();
+    const reg = (IDENTITY && typeof IDENTITY.registered === "boolean") ? IDENTITY.registered : null;
+
+    const mk = (tone, msg, actionHtml="") => `
+      <div class="alert alert-${tone} py-2 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>${msg}</div>
+          ${actionHtml}
+        </div>
+      </div>`;
+
+    let assetsMsg = "";
+    let reqMsg = "";
+
+    if (!tok) {
+        const a = `<button class="btn btn-sm btn-outline-dark" type="button" onclick="showSettingsTab()"><i class="bi bi-key"></i> Tokens</button>`;
+        assetsMsg = mk("warning", "Token not set for active agent. Some actions will not work.", a);
+        reqMsg = mk("warning", "Token not set for active agent. Requests cannot be loaded.", a);
+    } else if (reg === false) {
+        const a = `<button class="btn btn-sm btn-outline-success" type="button" onclick="showSettingsTab()"><i class="bi bi-person-plus"></i> Register</button>`;
+        assetsMsg = mk("danger", "Profile is not registered on-ledger. Upload/requests may fail.", a);
+        reqMsg = mk("danger", "Profile is not registered on-ledger. Requests may fail.", a);
+    }
+
+    const aEl = document.getElementById("assetsNotice");
+    if (aEl) aEl.innerHTML = assetsMsg;
+    const rEl = document.getElementById("requestsNotice");
+    if (rEl) rEl.innerHTML = reqMsg;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function agentEval(fn, args = [], _retried = false) {
+        const r = await fetch(`${agentBase()}/eval`, {
+            method: "POST",
+            headers: agentAuthHeaders(),
+            body: JSON.stringify({ function: fn, args })
+        });
+
+        if (r.status === 401 && !_retried) {
+            await handleUnauthorizedOnce();
+            return agentEval(fn, args, true);
+        }
+
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || "agent eval failed");
+        return j.result ?? j.text;
+    }
+
+    async function agentSubmit(fn, args = []) {
+        // Fabric can return MVCC_READ_CONFLICT (status code 11) on concurrent writes.
+        // Correct client behavior: retry a few times with backoff.
+        const maxAttempts = 3;
+        let lastErr = null;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                const r = await fetch(`${agentBase()}/submit`, {
+                    method: "POST",
+                    headers: agentAuthHeaders(),
+                    body: JSON.stringify({ function: fn, args })
+                });
+
+                if (r.status === 401) {
+                    await handleUnauthorizedOnce();
+                    // retry this attempt once with new token
+                    const r2 = await fetch(`${agentBase()}/submit`, {
+                        method: "POST",
+                        headers: agentAuthHeaders(),
+                        body: JSON.stringify({ function: fn, args })
+                    });
+                    const j2 = await r2.json();
+                    if (!j2.ok) throw new Error(String(j2.error || "agent submit failed"));
+                    return j2.result ?? j2.text;
+                }
+
+                const j = await r.json();
+                if (!j.ok) {
+                    const msg = String(j.error || "agent submit failed");
+                    // retry only on MVCC / commit conflicts
+                    if (/MVCC_READ_CONFLICT|status code\s+11|commit with status code 11/i.test(msg) && attempt < maxAttempts) {
+                        await sleep(200 * attempt);
+                        continue;
+                    }
+                    throw new Error(msg);
+                }
+                return j.result ?? j.text;
+            } catch (e) {
+                lastErr = e;
+                const msg = String(e && e.message ? e.message : e);
+                if (/MVCC_READ_CONFLICT|status code\s+11|commit with status code 11/i.test(msg) && attempt < maxAttempts) {
+                    await sleep(200 * attempt);
+                    continue;
+                }
+                throw e;
+            }
+        }
+        throw lastErr || new Error("agent submit failed");
+    }
+
+    function normalizeAsset(a) {
+        if (!a) return a;
+        if (!a.ID && a.id) a.ID = a.id;
+        if (!a.CID && a.cid) a.CID = a.cid;
+        if (!a.OwnerID && a.ownerID) a.OwnerID = a.ownerID;
+        if (!a.Category && a.category) a.Category = a.category;
+        if (!a.FileHash && a.fileHash) a.FileHash = a.fileHash;
+        if (!a.Description && a.description) a.Description = a.description;
+
+        if (!a.Keys && a.keys) a.Keys = a.keys;
+        if (!a.AccessLog && a.accessLog) a.AccessLog = a.accessLog;
+
+        if (!a.title && a.Title) a.title = a.Title;
+        if (!a.authors && a.Authors) a.authors = a.Authors;
+        if (!a.discipline && a.Discipline) a.discipline = a.Discipline;
+        if (!a.license && a.License) a.license = a.License;
+        if (!a.doi && a.DOI) a.doi = a.DOI;
+        if (!a.keywords && a.Keywords) a.keywords = a.Keywords;
+        // Pull nested metadata (chaincode returns {metadata:{title,...}})
+        if (a.metadata) {
+            if (!a.Title && a.metadata.title) a.Title = a.metadata.title;
+            if (!a.Authors && a.metadata.authors) a.Authors = a.metadata.authors;
+            if (!a.Discipline && a.metadata.discipline) a.Discipline = a.metadata.discipline;
+            if (!a.License && a.metadata.license) a.License = a.metadata.license;
+            if (!a.DOI && a.metadata.doi) a.DOI = a.metadata.doi;
+            if (!a.Keywords && a.metadata.keywords) a.Keywords = a.metadata.keywords;
+        }
+
+
+        return a;
+    }
+
+    let CURRENT_USER = "Ruslan";
+    let myPublicKey = null;
+
+    const REQUEST_TTL_MS = 30_000;
+    const pendingRequests = new Set();
+    const lastRequestTs = {};
+    const lastRequestStatus = {};
+    function reqKey(assetId) { return `${CURRENT_USER}::${assetId}`; }
+
+    function log(msg) {
+        const box = document.getElementById("logBox");
+        const ts = new Date().toISOString();
+        box.textContent += `[${ts}] ${msg}\n`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    // ============================
+    // Identity / context
+    // ============================
+    let IDENTITY = { clientID: "", mspID: "", role: "", department: "" };
+
+    function copyElText(id) {
+        const el = document.getElementById(id);
+        const txt = (el && (el.textContent || el.innerText) || "").trim();
+        if (!txt) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt)
+                .then(() => log("📋 Copied to clipboard"))
+                .catch(() => {});
+        } else {
+            const ta = document.createElement("textarea");
+            ta.value = txt;
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand("copy"); log("📋 Copied to clipboard"); } catch {}
+            document.body.removeChild(ta);
+        }
+    }
+
+    function setEl(id, val) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = (val === undefined || val === null || val === "") ? "—" : String(val);
+    }
+
+    function setHtml(id, htmlStr) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = htmlStr;
+    }
+
+    async function refreshIdentity() {
+        setEl("idAgent", agentBase());
+        // If token is missing, don't try /eval (it will 401). Show "Disconnected" state.
+        if (!getAgentToken()) {
+            IDENTITY = { clientID: "", mspID: "", role: "", department: "" };
+            setEl("idClient", "—");
+            setEl("idMsp", "—");
+            setEl("idDept", "—");
+            const roleEl = document.getElementById("idRole");
+            if (roleEl) { roleEl.textContent = "—"; roleEl.className = "badge bg-warning text-dark"; }
+            setHtml("idBlockLine", `<span class="badge bg-warning text-dark">Disconnected</span> <span class="text-muted">No token set for this agent</span>`);
+            try { renderSessionPanel(); } catch {}
+            try { renderNotices(); } catch {}
+            applyRoleVisibility();
+            return;
+        }
+        try {
+            const who = await agentEval("WhoAmI", []);
+            IDENTITY = {
+                clientID: who.clientID || "",
+                mspID: who.mspID || "",
+                role: who.role || "",
+                department: who.department || ""
+            };
+
+            setEl("idClient", IDENTITY.clientID || "—");
+            setEl("idMsp", IDENTITY.mspID || "—");
+            setEl("idDept", IDENTITY.department || "—");
+
+            const roleEl = document.getElementById("idRole");
+            if (roleEl) {
+                roleEl.textContent = IDENTITY.role || "—";
+                roleEl.className = "badge " + (IDENTITY.role === "SecurityService"
+                    ? "bg-danger"
+                    : (IDENTITY.role ? "bg-secondary" : "bg-warning text-dark"));
+            }
+
+            // Block status (from on-chain profile; self access is allowed)
+            try {
+                const prof = await agentEval("GetUserProfile", [IDENTITY.clientID]);
+                const blocked = !!(prof && (prof.isBlocked || prof.IsBlocked));
+                if (blocked) {
+                    const until = prof.blockedUntil || prof.BlockedUntil || "";
+                    const reason = prof.blockReason || prof.BlockReason || "";
+                    setHtml("idBlockLine",
+                        `<span class="badge bg-danger">Blocked</span>
+                         <span class="text-muted">until</span> <code>${escapeHtml(until || "—")}</code>
+                         <span class="text-muted">reason:</span> ${escapeHtml(reason || "—")}`
+                    );
+                } else {
+                    setHtml("idBlockLine", `<span class="badge bg-success">Active</span> <span class="text-muted">On-chain profile OK</span>`);
+                }
+            } catch (e) {
+                setHtml("idBlockLine", `<span class="badge bg-warning text-dark">Profile</span> <span class="text-muted">${escapeHtml(humanizeErrorText(e.message || e))}</span>`);
+            }
+
+        } catch (e) {
+            IDENTITY = { clientID: "", mspID: "", role: "", department: "" };
+            setEl("idClient", "—");
+            setEl("idMsp", "—");
+            setEl("idDept", "—");
+            const roleEl = document.getElementById("idRole");
+            if (roleEl) { roleEl.textContent = "—"; roleEl.className = "badge bg-warning text-dark"; }
+            setHtml("idBlockLine", `<span class="badge bg-warning text-dark">Disconnected</span> <span class="text-muted">${escapeHtml(humanizeErrorText(e.message || e))}</span>`);
+        }
+
+// Check on-ledger registration (best-effort)
+try {
+    if (getAgentToken() && IDENTITY && IDENTITY.clientID) {
+        await agentEval("GetUserProfile", [IDENTITY.clientID]);
+        IDENTITY.registered = true;
+    } else if (getAgentToken() && IDENTITY && IDENTITY.clientID) {
+        IDENTITY.registered = false;
+    }
+} catch (e2) {
+    IDENTITY.registered = false;
+}
+
+// Update Settings panel + notices
+try { renderSessionPanel(); } catch {}
+try { renderNotices(); } catch {}
+        applyRoleVisibility();
+        try { if (IDENTITY.role === "SecurityService") runSetupChecklist(); } catch {}
+        try { updateDashboardIdentity(); } catch {}
+
+    }
+
+    function applyRoleVisibility() {
+        // Security panel driven by REAL role attribute, not by dropdown label.
+        const isSecurity = (IDENTITY.role === "SecurityService");
+        toggleEl("securityPanel", isSecurity);
+        toggleEl("setupChecklistWrap", isSecurity);
+        toggleEl("riskDashboard", isSecurity);
+        toggleEl("securityNotice", !isSecurity);
+
+        const navSecurity = document.getElementById("nav-security");
+        if (navSecurity) navSecurity.classList.toggle("d-none", !isSecurity);
+
+        const tabs = document.getElementById("mainTabs");
+        if (tabs) {
+          if (!applyRoleVisibility._init) {
+            Array.from(tabs.children).forEach((li, idx) => { li.dataset.order = String(idx); });
+            applyRoleVisibility._init = true;
+          }
+          if (isSecurity && navSecurity) {
+            tabs.prepend(navSecurity);
+          } else if (!isSecurity) {
+            const items = Array.from(tabs.children).sort((a,b) => Number(a.dataset.order||0) - Number(b.dataset.order||0));
+            items.forEach((li) => tabs.appendChild(li));
+          }
+        }
+
+        if (isSecurity && !applyRoleVisibility._activated) {
+          applyRoleVisibility._activated = true;
+          showMainTab("#pane-security");
+        }
+    }
+
+    // ============================
+    // Drawer state
+    // ============================
+    let UI_STATE = {
+        meClientID: null,
+        myAssetsById: {},
+        pendingByAsset: {},
+        myReqStatusByAsset: {}
+    };
+
+    let DRAWER_CTX = { assetId: null, asset: null, isOwner: false };
+
+    function clearDrawerAlert() { setHtml("drawerAlerts", ""); }
+
+    async function openAssetDrawer(assetId, options = {}) {
+        clearDrawerAlert();
+        DRAWER_CTX = { assetId, asset: null, isOwner: false };
+        const overviewOnly = !!(options && options.overviewOnly);
+        DRAWER_CTX.overviewOnly = overviewOnly;
+        try {
+          const tabs = document.getElementById("drawerTabs");
+          if (tabs) tabs.classList.toggle("d-none", overviewOnly);
+          ["pane-access","pane-audit","pane-downloads"].forEach(pid => {
+            const el = document.getElementById(pid);
+            if (el) el.classList.toggle("d-none", overviewOnly);
+          });
+        } catch {}
+
+
+        setEl("assetDrawerLabel", `Asset ${assetId}`);
+        setEl("assetDrawerSub", `Loading from ${agentBase()}…`);
+
+        setHtml("drawerOverview", `<div class="text-muted small">Loading…</div>`);
+        setHtml("drawerAccess", `<div class="text-muted small">Loading…</div>`);
+        setHtml("drawerAudit", `<div class="text-muted small">Loading…</div>`);
+        setHtml("drawerDownloads", `<div class="text-muted small">Loading…</div>`);
+
+        if (!(window.bootstrap && bootstrap.Offcanvas)) {
+            // Fallback when Bootstrap JS is unavailable (e.g. CDN blocked)
+            await showMetadata(assetId);
+            return;
+        }
+        const ocEl = document.getElementById("assetDrawer");
+        bootstrap.Offcanvas.getOrCreateInstance(ocEl).show();
+
+        try {
+            const full = await agentEval("ReadAsset", [assetId]);
+            const asset = normalizeAsset(full);
+            DRAWER_CTX.asset = asset;
+
+            const me = UI_STATE.meClientID;
+            const isOwner = (me && asset.OwnerID && me === asset.OwnerID);
+            DRAWER_CTX.isOwner = isOwner;
+
+            setEl("assetDrawerSub", `${escapeHtml(asset.Title || asset.title || "—")}`);
+
+            const accessStatus = (!isOwner)
+                ? ((UI_STATE.myReqStatusByAsset[assetId] || "NONE").toString().toUpperCase())
+                : "OWNER";
+
+            const canRequest = (!isOwner) && (accessStatus !== "PENDING");
+            const canDownload = isOwner || (accessStatus === "APPROVED" || accessStatus === "GRANTED");
+
+            const btnReq = document.getElementById("drawerBtnRequest");
+            const btnDl = document.getElementById("drawerBtnDownload");
+            const btnAppr = document.getElementById("drawerBtnApprove");
+            const btnRot = document.getElementById("drawerBtnRotate");
+
+            if (btnReq) { btnReq.disabled = !canRequest; btnReq.classList.toggle("d-none", isOwner); }
+            if (btnDl) { btnDl.disabled = !canDownload; }
+            if (btnAppr) {
+                const review = (asset.NeedsManualReview === true || asset.needsManualReview === true);
+                btnAppr.classList.toggle("d-none", !(isOwner && review));
+            }
+            if (btnRot) { btnRot.classList.toggle("d-none", !isOwner); }
+
+            renderDrawerOwnerPanel(asset);
+            renderDrawerOverview(asset);
+            renderDrawerAccess(asset);
+
+            drawerReloadAudit();
+            drawerReloadDownloads();
+        } catch (e) {
+            setHtml("drawerOverview", `<div class="alert alert-danger py-2 small">${escapeHtml(e.message || e)}</div>`);
+            setHtml("drawerAccess", `<div class="text-muted small">—</div>`);
+        }
+    }
+
+    function renderDrawerOverview(asset) {
+        const meta = asset.metadata || asset.Metadata || {};
+        const sug = asset.SuggestedCategory || asset.suggestedCategory || "";
+        const conf = asset.SuggestedConfidence ?? asset.suggestedConfidence;
+        const review = (asset.NeedsManualReview === true || asset.needsManualReview === true);
+        const official = asset.Category || asset.category || "";
+
+        const catBadge = review
+            ? '<span class="badge bg-warning text-dark ms-1">Needs review</span>'
+            : (official === "Unverified"
+                ? '<span class="badge bg-warning text-dark ms-1">Unverified</span>'
+                : (official ? '<span class="badge bg-success ms-1">Approved</span>' : ''));
+
+        const suggestedHtml = `${escapeHtml(sug || "—")}` +
+            ((conf !== undefined && conf !== null && conf !== "")
+                ? ` <span class="text-muted small">(${escapeHtml(conf)}%)</span>`
+                : "");
+
+        // Determine if the current user has access (owner or approved request)
+        const me = UI_STATE.meClientID;
+        const isOwner = DRAWER_CTX.isOwner;
+        const accessStatus = (!isOwner)
+            ? ((UI_STATE.myReqStatusByAsset[asset.ID] || "NONE").toString().toUpperCase())
+            : "OWNER";
+        const hasAccess = isOwner || accessStatus === "APPROVED" || accessStatus === "GRANTED";
+        const isSecurityService = (IDENTITY && IDENTITY.role === "SecurityService");
+        const canSeeDetails = hasAccess || isSecurityService;
+
+        const cid = escapeHtml(asset.CIDHash || asset.cidHash || "");
+        const fileHash = escapeHtml(asset.FileHash || asset.fileHash || "");
+
+        if (!canSeeDetails) {
+            // Restricted view — only public summary
+            setHtml("drawerOverview", `
+              <div class="mb-2">
+                <div><b>Official category:</b> ${escapeHtml(official)} ${catBadge}</div>
+                <div><b>AI suggestion:</b> ${suggestedHtml}</div>
+              </div>
+
+              <div class="mb-2">
+                <div class="text-muted small mb-1">Repository metadata</div>
+                <div><b>Title:</b> ${escapeHtml(meta.title || asset.Title || "")}</div>
+              </div>
+
+              <div class="alert alert-secondary py-2 small mt-3">
+                <i class="bi bi-lock"></i>
+                Full provenance and metadata (CID, file hash, authors, DOI, etc.) are available only after access is granted.
+                Use <b>Request access</b> above.
+              </div>
+            `);
+            return;
+        }
+
+        setHtml("drawerOverview", `
+          <div class="mb-2">
+            <div><b>Official category:</b> ${escapeHtml(official)} ${catBadge}</div>
+            <div><b>AI suggestion:</b> ${suggestedHtml}</div>
+          </div>
+
+          <div class="mb-2">
+            <div class="text-muted small">Provenance</div>
+            <div><b>CID:</b> <code style="word-break:break-all;">${cid}</code></div>
+            <div><b>File hash:</b> <code style="word-break:break-all;">${fileHash}</code></div>
+            <div><b>OwnerID:</b> <code style="word-break:break-all;">${escapeHtml(asset.OwnerID || "")}</code></div>
+          </div>
+
+          <hr class="my-2">
+
+          <div class="text-muted small mb-1">Repository metadata</div>
+          <div><b>Title:</b> ${escapeHtml(meta.title || asset.Title || "")}</div>
+          <div><b>Authors:</b> ${escapeHtml(meta.authors || asset.Authors || "")}</div>
+          <div><b>Discipline:</b> ${escapeHtml(meta.discipline || asset.Discipline || "")}</div>
+          <div><b>License:</b> ${escapeHtml(meta.license || asset.License || "")}</div>
+          <div><b>DOI:</b> ${escapeHtml(meta.doi || asset.DOI || "")}</div>
+          <div><b>Keywords:</b> ${escapeHtml(meta.keywords || asset.Keywords || "")}</div>
+        `);
+    }
+
+    function renderDrawerOwnerPanel(asset) {
+        const panel = document.getElementById("drawerOwnerPanel");
+        if (!panel) return;
+        if (!DRAWER_CTX.isOwner) {
+            panel.innerHTML = "";
+            return;
+        }
+
+        const pend = UI_STATE.pendingByAsset[asset.ID] || [];
+        if (!pend.length) {
+            panel.innerHTML = `<div class="alert alert-light py-2 mb-0 small">No pending requests for this asset.</div>`;
+            return;
+        }
+
+        let html = `<div class="card bg-soft">
+          <div class="card-body py-2">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="fw-semibold">Pending requests</div>
+              <span class="badge bg-warning text-dark">${pend.length}</span>
+            </div>
+            <div class="list-group mt-2 list-tight">`;
+        for (const r of pend) {
+            const requesterID = r.requesterID || r.RequesterID || "";
+            const requesterName = r.requester || r.Requester || (requesterID ? requesterID.substring(0, 12) + "…" : "unknown");
+            const reason = (r.Reason || r.reason || "").toString();
+            html += `
+              <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <div><b>${escapeHtml(requesterName)}</b></div>
+                    <div class="text-muted small"><code>${escapeHtml(requesterID)}</code></div>
+                    ${reason ? `<div class="text-muted small">reason: ${escapeHtml(reason)}</div>` : ``}
+                  </div>
+                  <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-success" onclick="grantAccess('${asset.ID}','${requesterID}')">Grant</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="denyAccessUI('${asset.ID}','${requesterID}')">Deny</button>
+                  </div>
+                </div>
+              </div>`;
+        }
+        html += `</div></div></div>`;
+        panel.innerHTML = html;
+    }
+
+    function renderDrawerAccess(asset) {
+        const aid = asset.ID;
+        const me = UI_STATE.meClientID;
+        const isOwner = DRAWER_CTX.isOwner;
+
+        if (!me) {
+            setHtml("drawerAccess", `<div class="text-muted small">WhoAmI not available.</div>`);
+            return;
+        }
+
+        if (!isOwner) {
+            const st = (UI_STATE.myReqStatusByAsset[aid] || "NONE").toString().toUpperCase();
+            const badge = (st === "APPROVED" || st === "GRANTED") ? "bg-success" :
+                          (st === "PENDING") ? "bg-warning text-dark" :
+                          (st === "DENIED") ? "bg-danger" : "bg-secondary";
+            const text = (st === "NONE") ? "No access request" : st;
+
+            setHtml("drawerAccess", `
+              <div class="mb-2">
+                <div class="text-muted small">Your access status</div>
+                <span class="badge ${badge}">${escapeHtml(text)}</span>
+              </div>
+              <div class="text-muted small">
+                Use <b>Request access</b> button above. If approved, you can download (AES key is released per-user).
+              </div>
+            `);
+            return;
+        }
+
+        const pend = UI_STATE.pendingByAsset[aid] || [];
+        const owned = UI_STATE.myAssetsById[aid] || null;
+        const keysObj = owned ? (owned.Keys || owned.keys) : null;
+
+        let htmlStr = `<div class="mb-2"><span class="badge bg-info">Owner</span> <span class="text-muted small">Grant/revoke access here.</span></div>`;
+
+        if (pend.length === 0) {
+            htmlStr += `<div class="text-muted small mb-2">No pending requests.</div>`;
+        } else {
+            htmlStr += `<div class="text-muted small mb-2">Pending requests are shown above.</div>`;
+        }
+
+        if (keysObj && typeof keysObj === "object") {
+            const grantedIds = Object.keys(keysObj).filter(k => k && k !== me && k !== asset.OwnerID);
+            if (grantedIds.length) {
+                htmlStr += `<div class="mb-2"><b>Granted users</b></div><div class="list-group">`;
+                for (const gid of grantedIds) {
+                    const short = (gid.length > 18) ? gid.substring(0, 18) + "…" : gid;
+                    htmlStr += `
+                      <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <code>${escapeHtml(short)}</code>
+                        <button class="btn btn-sm btn-outline-danger" onclick="revokeAccess('${aid}','${gid}')">Revoke</button>
+                      </div>
+                    `;
+                }
+                htmlStr += `</div>`;
+            } else {
+                htmlStr += `<div class="text-muted small">No granted users (besides you).</div>`;
+            }
+        } else {
+            htmlStr += `<div class="text-muted small">Keys not loaded for this asset (try Refresh).</div>`;
+        }
+
+        setHtml("drawerAccess", htmlStr);
+    }
+
+    async function drawerReloadAudit() {
+        const aid = DRAWER_CTX.assetId;
+        if (!aid) return;
+        setHtml("drawerAudit", `<div class="text-muted small">Loading…</div>`);
+        try {
+            const res = await agentEval("QueryAuditEventsByAsset", [aid]);
+            const items = (res && (res.items || res.Items)) ? (res.items || res.Items) : [];
+            renderAuditItems(items);
+        } catch (e) {
+            setHtml("drawerAudit", `<div class="alert alert-warning py-2 small">${escapeHtml(e.message || e)}</div>`);
+        }
+    }
+
+    function renderAuditItems(items) {
+        if (!Array.isArray(items) || items.length === 0) {
+            setHtml("drawerAudit", `<div class="text-muted small">No audit events.</div>`);
+            return;
+        }
+        items = items.slice().sort((a,b) => String(b.timestamp || b.Timestamp || "").localeCompare(String(a.timestamp || a.Timestamp || "")));
+
+        let out = `<div class="list-group">`;
+        for (const it of items) {
+            const ts = it.timestamp || it.Timestamp || "";
+            const typ = it.eventType || it.EventType || "";
+            const actor = it.actorID || it.ActorID || "";
+            const tgt = it.targetUserID || it.TargetUserID || "";
+            const detail = it.detail || it.Detail || "";
+            const tx = it.txID || it.TxID || "";
+            out += `
+              <div class="list-group-item">
+                <div class="d-flex justify-content-between">
+                  <div><b>${escapeHtml(typ || "EVENT")}</b></div>
+                  <div class="text-muted small">${escapeHtml(ts)}</div>
+                </div>
+                <div class="text-muted small">actor: <code>${escapeHtml(actor)}</code></div>
+                ${tgt ? `<div class="text-muted small">target: <code>${escapeHtml(tgt)}</code></div>` : ``}
+                ${detail ? `<div class="small mt-1">${escapeHtml(detail)}</div>` : ``}
+                ${tx ? `<div class="text-muted small mt-1">tx: <code>${escapeHtml(tx)}</code></div>` : ``}
+              </div>
+            `;
+        }
+        out += `</div>`;
+        setHtml("drawerAudit", out);
+    }
+
+    async function drawerReloadDownloads() {
+        const aid = DRAWER_CTX.assetId;
+        if (!aid) return;
+        setHtml("drawerDownloads", `<div class="text-muted small">Loading…</div>`);
+        try {
+            const res = await agentEval("QueryDownloadAuditsByAsset", [aid]);
+            const items = (res && (res.items || res.Items)) ? (res.items || res.Items) : [];
+            renderDownloadItems(items);
+        } catch (e) {
+            setHtml("drawerDownloads", `<div class="alert alert-warning py-2 small">${escapeHtml(e.message || e)}</div>`);
+        }
+    }
+
+    function renderDownloadItems(items) {
+        if (!Array.isArray(items) || items.length === 0) {
+            setHtml("drawerDownloads", `<div class="text-muted small">No downloads logged.</div>`);
+            return;
+        }
+        items = items.slice().sort((a,b) => String(b.timestamp || b.Timestamp || "").localeCompare(String(a.timestamp || a.Timestamp || "")));
+
+        let out = `<div class="list-group">`;
+        for (const it of items) {
+            const ts = it.timestamp || it.Timestamp || "";
+            const actor = it.actorID || it.ActorID || "";
+            const tx = it.txID || it.TxID || "";
+            out += `
+              <div class="list-group-item">
+                <div class="d-flex justify-content-between">
+                  <div><b>DOWNLOAD</b></div>
+                  <div class="text-muted small">${escapeHtml(ts)}</div>
+                </div>
+                <div class="text-muted small">actor: <code>${escapeHtml(actor)}</code></div>
+                ${tx ? `<div class="text-muted small mt-1">tx: <code>${escapeHtml(tx)}</code></div>` : ``}
+              </div>
+            `;
+        }
+        out += `</div>`;
+        setHtml("drawerDownloads", out);
+    }
+
+    // Drawer button handlers (re-use existing actions)
+    async function drawerRequestAccess() {
+        const aid = DRAWER_CTX.assetId;
+        if (!aid) return;
+        await requestAccess(aid);
+        await loadFiles();
+        try { await openAssetDrawer(aid); } catch {}
+    }
+
+    async function drawerDownload() {
+        const aid = DRAWER_CTX.assetId;
+        if (!aid) return;
+        await downloadAsset(aid);
+        setTimeout(() => { drawerReloadDownloads(); }, 600);
+    }
+
+    async function drawerApproveCategory() {
+        const aid = DRAWER_CTX.assetId;
+        if (!aid) return;
+        await approveCategoryUI(aid);
+        await loadFiles();
+        try { await openAssetDrawer(aid); } catch {}
+    }
+
+    async function drawerRotate() {
+        const aid = DRAWER_CTX.assetId;
+        if (!aid) return;
+        await rotateAssetContentUI(aid);
+        await loadFiles();
+        try { await openAssetDrawer(aid); } catch {}
+    }
+
+    async function connectProfile() {
+    const sel = document.getElementById("profileSelect");
+    const next = sel ? sel.value : CURRENT_USER;
+    setActiveProfile(next);
+    log(`Active agent -> ${CURRENT_USER} (${agentBase()})`);
+
+    const okTok = await ensureAgentToken(false);
+    if (!okTok) {
+        showToast("Set token to continue", "warning");
+        return;
+    }
+
+    try {
+        await ensureRsaReady();
+    } catch (e) {
+        console.error(e);
+        showToast("Agent RSA not available (check agent is running)", "danger");
+        log("❌ RSA agent error: " + (e.message || e));
+        return;
+    }
+
+    await checkHealthAll();
+        await refreshIdentity();
+        loadFiles();
+      loadDashboard(true);
+    }
+
+    async function ensureRsaReady() {
+        // Private RSA key is kept inside the local agent (not in browser storage).
+        // Browser holds only the public key to encrypt AES keys for sharing.
+        const res = await fetch(agentBase() + "/rsa/publicKey", { headers: (()=>{ const t=getAgentToken(); return t?{"Authorization":"Bearer "+t}:{}})() });
+        if (!res.ok) throw new Error("Agent RSA not available on " + agentBase());
+        myPublicKey = await res.text();
+    }
+
+    async function agentRsaDecrypt(ciphertextB64) {
+        const decRes = await fetch(agentBase() + "/rsa/decrypt", {
+            method: "POST",
+            headers: agentAuthHeaders(),
+            body: JSON.stringify({ ciphertext: ciphertextB64 })
+        });
+        if (!decRes.ok) throw new Error("Agent decrypt failed");
+        const decJson = await decRes.json();
+        return decJson.plaintext;
+    }
+
+    async function registerIdentity() {
+        const okTok = await ensureAgentToken(false);
+        if (!okTok) return false;
+
+        try {
+            await ensureRsaReady();
+        } catch (e) {
+            await uiAlert({ title: "Register failed", body: "Agent RSA not available (check agent is running)", tone: "danger" });
+            return false;
+        }
+
+        try {
+            await agentSubmit("RegisterUser", [CURRENT_USER, myPublicKey, "", ""]);
+            showToast("Registered on-ledger", "success");
+            log("✅ Registered on blockchain (via agent).");
+            await refreshIdentity(true);
+            return true;
+        } catch (e) {
+            console.error(e);
+            await uiAlert({ title: "Register failed", body: (e && e.message) ? e.message : String(e), tone: "danger" });
+            return false;
+        }
+}
+
+function showUploadResult({ cid, assetId, suggested, confidence, needsReview }) {
+    const el = document.getElementById("uploadResult");
+    if (!el) return;
+    const confTxt = (confidence !== undefined && confidence !== null && confidence !== "") ? `${escapeHtml(confidence)}%` : "";
+    const suggestTxt = suggested ? `${escapeHtml(suggested)}${confTxt ? ` <span class="text-muted small">(${confTxt})</span>` : ""}` : "—";
+    const reviewBadge = needsReview ? `<span class="badge bg-warning text-dark ms-1">Needs review</span>` : `<span class="badge bg-success ms-1">Ready</span>`;
+    const approveBtn = needsReview
+        ? `<button class="btn btn-sm btn-warning" onclick="approveCategoryUI('${assetId}')">Approve as suggested</button>`
+        : "";
+
+    el.classList.remove("d-none");
+    el.innerHTML = `
+      <div class="card bg-soft">
+        <div class="card-body py-2">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <div class="small text-muted">Upload result</div>
+              <div><b>Asset:</b> <code>${escapeHtml(assetId || "—")}</code> ${reviewBadge}</div>
+              <div><b>CID:</b> <code>${escapeHtml(cid || "—")}</code></div>
+              <div><b>AI suggestion:</b> ${suggestTxt}</div>
+            </div>
+            <div class="d-flex gap-2">${approveBtn}</div>
+          </div>
+        </div>
+      </div>
+    `;
+}
+
+    async function uploadFile() {
+        const okTok = await ensureAgentToken(false);
+        if (!okTok) return;
+        if (IDENTITY && IDENTITY.registered === false) {
+            await uiAlert({ title: "Not registered", body: "Profile is not registered on-ledger. Please register in Settings.", tone: "warning" });
+            try { showSettingsTab(); } catch {}
+            return;
+        }
+
+        const btn = document.getElementById('btnUpload');
+        const fileInput = document.getElementById('fileInput');
+        const desc = document.getElementById('fileDesc').value;
+        const resultEl = document.getElementById('uploadResult');
+        if (resultEl) { resultEl.classList.add('d-none'); resultEl.innerHTML = ''; }
+
+        const title = document.getElementById('metaTitle').value;
+        const authors = document.getElementById('metaAuthors').value;
+        const discipline = document.getElementById('metaDiscipline').value;
+        const licenseStr = document.getElementById('metaLicense').value;
+        const doi = document.getElementById('metaDOI').value;
+        const keywords = document.getElementById('metaKeywords').value;
+
+        if (!fileInput.files[0]) { await uiAlert({title:"Upload", body:"Select a file first.", tone:"warning"}); return; }
+
+        const originalText = btn.innerText;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+        btn.disabled = true;
+
+        const file = fileInput.files[0];
+        log("Processing upload...");
+
+        const aesKeyWA = CryptoJS.lib.WordArray.random(256 / 8);
+        const aesKeyB64 = CryptoJS.enc.Base64.stringify(aesKeyWA);
+        log(`🔹 AES key generated.`);
+
+        const reader = new FileReader();
+        reader.onload = async function (e) {
+            try {
+                const dataUrl = e.target.result;
+                const base64Content = dataUrl.split(',')[1];
+
+                const fileHash = CryptoJS.SHA256(base64Content).toString();
+
+                const fileData = CryptoJS.enc.Base64.parse(base64Content);
+                const iv = CryptoJS.lib.WordArray.random(16);
+
+                const encrypted = CryptoJS.AES.encrypt(
+                    fileData,
+                    aesKeyWA,
+                    { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
+                );
+
+                const filePayload = iv.toString(CryptoJS.enc.Base64) + "::" + encrypted.ciphertext.toString(CryptoJS.enc.Base64);
+
+                let encryptor = new JSEncrypt();
+                encryptor.setPublicKey(myPublicKey);
+                const encryptedAesKey = encryptor.encrypt(aesKeyB64);
+                if (!encryptedAesKey) throw new Error("RSA Encryption of AES key failed.");
+
+                const blob = new Blob([filePayload], { type: "application/octet-stream" });
+
+                const fd = new FormData();
+                fd.append('file', blob, file.name + ".enc");
+                fd.append('description', desc);
+                fd.append('fileHash', fileHash);
+                fd.append('owner', CURRENT_USER);
+                fd.append('encryptedAesKey', encryptedAesKey);
+
+                fd.append('title', title);
+                fd.append('authors', authors);
+                fd.append('discipline', discipline);
+                fd.append('license', licenseStr);
+                fd.append('doi', doi);
+                fd.append('keywords', keywords);
+
+                log("Uploading to IPFS (server)...");
+                const res = await fetch(`${API_URL}/upload`, { method: 'POST', body: fd });
+                const json = await res.json();
+
+                if (json.status !== 'success') {
+                    log("❌ Upload Error: " + (json.message || "unknown"));
+                    return;
+                }
+
+                                const cid = json.cid;
+                                const assetId = json.asset_id;
+
+                                // DISP decision from backend (source of truth)
+                                const dispDecision = json.disp_decision || "allow";
+                                const dispFlags = Array.isArray(json.disp_flags) ? json.disp_flags : [];
+                                const dispScore = (json.disp_score !== undefined && json.disp_score !== null) ? json.disp_score : null;
+
+                                // Always use sanitized fields returned by backend (never trust raw form fields for ledger writes)
+                                const fileHashS = json.fileHash || fileHash;
+                                const encryptedAesKeyS = json.encryptedAesKey || encryptedAesKey;
+                                const descS = json.description ?? "";
+                                const titleS = json.title ?? "";
+                                const authorsS = json.authors ?? "";
+                                const disciplineS = json.discipline ?? "";
+                                const licenseS = json.license ?? "";
+                                const doiS = json.doi ?? "";
+                                const keywordsS = json.keywords ?? "";
+
+                                const suggestedCategory = (json.ai_suggested_category || json.ai_category || "Unclassified");
+                                const ledgerCategory = (json.initial_category || "Unverified");
+
+                                const confStr = (json.ai_confidence !== undefined && json.ai_confidence !== null)
+                                    ? ` (${json.ai_confidence}%)`
+                                    : '';
+
+                                log(`✅ IPFS OK. CID: ${cid}. AI suggested: ${suggestedCategory}${confStr}`);
+
+                                if (ledgerCategory && String(ledgerCategory).toLowerCase() !== String(suggestedCategory).toLowerCase()) {
+                                    log(`ℹ️ Initial on-chain category will be set to: ${ledgerCategory} (needs approval)`);
+                                }
+
+                                if (dispDecision !== "allow") {
+                                    log(`🛡️ DISP: ${dispDecision}` + (dispScore !== null ? ` score=${dispScore}` : "") + (dispFlags.length ? ` flags=${dispFlags.join(",")}` : ""));
+                                    log("⚠️ Content requires manual review. AI suggestion will be computed on sanitized text and requires approval.");
+                                }
+
+                                log("Writing asset to blockchain via local agent...");
+
+                                await agentSubmit("CreateAsset", [
+                                    assetId,
+                                    cid,
+                                    String(ledgerCategory),
+                                    fileHashS,
+                                    descS,
+                                    encryptedAesKeyS,
+                                    titleS,
+                                    authorsS,
+                                    disciplineS,
+                                    licenseS,
+                                    doiS,
+                                    keywordsS
+                                ]);
+
+
+                                // Ask backend to compute + persist AI suggestion on-chain via MLService agent (unverified).
+                                // IMPORTANT: we send ONLY sanitized metadata returned by /upload.
+                                let aiSuggest = suggestedCategory;
+                                let aiConf = json.ai_confidence;
+
+                                try {
+                                    const r2 = await fetch(`${API_URL}/ai_suggest_auto`, {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                            asset_id: assetId,
+                                            metadata: {
+                                                title: titleS,
+                                                author: authorsS,
+                                                department: disciplineS,
+                                                description: descS,
+                                                keywords: keywordsS
+                                            }
+                                        })
+                                    });
+                                    const j2 = await r2.json();
+                                    if (j2 && j2.status === "ok") {
+                                        aiSuggest = j2.suggested_category || aiSuggest;
+                                        aiConf = (j2.confidence !== undefined && j2.confidence !== null) ? j2.confidence : aiConf;
+                                        const conf2 = (aiConf !== undefined && aiConf !== null) ? ` (${aiConf}%)` : "";
+                                        log(`🤖 AI suggestion stored (unverified): ${aiSuggest}${conf2}`);
+                                    } else {
+                                        log("⚠️ AI suggestion failed: " + ((j2 && j2.message) ? j2.message : "unknown"));
+                                    }
+                                } catch (e) {
+                                    console.warn("ai_suggest_auto failed:", e);
+                                    log("⚠️ AI suggestion call failed: " + e.message);
+                                }
+
+                                                                // UI: no inline confirm/prompt. Category can be approved later by the owner.
+                                if (ledgerCategory && String(ledgerCategory).toLowerCase() === 'unverified') {
+                                    log('ℹ️ Category requires manual review. Use "Approve category" as owner.');
+                                }
+
+                                log(`✅ Blockchain OK. Asset ID: ${assetId}`);
+                                showUploadResult({
+                                  cid,
+                                  assetId,
+                                  suggested: aiSuggest,
+                                  confidence: aiConf,
+                                  needsReview: String(ledgerCategory || "").toLowerCase() === "unverified"
+                                });
+                setTimeout(loadFiles, 1000);
+
+            } catch (err) {
+                console.error(err);
+                log("❌ Upload Error: " + err.message);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function loadFiles() {
+        const tbody = document.getElementById('filesTable');
+        if (!tbody) return;
+
+        // Basic empty-state: token missing
+        if (!getAgentToken()) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-muted text-center p-3">Token not set for active agent. Open <a href="#" onclick="showSettingsTab();return false;">Settings</a> to set it.</td></tr>`;
+            try { renderNotices(); } catch {}
+            return;
+        }
+
+        // Determine my Fabric identity (what the local agent is actually using)
+        let me = null;
+        try {
+            const who = await agentEval("WhoAmI", []);
+            me = (who && (who.clientID || who.clientId || who.id)) ? (who.clientID || who.clientId || who.id) : null;
+        } catch (e) {
+            console.warn("WhoAmI failed:", e);
+        }
+
+        try {
+            // Public list: does NOT leak Keys
+            let assets = await agentEval("GetAllAssetsPublic", []);
+            if (!Array.isArray(assets)) assets = [];
+            assets = assets.map(normalizeAsset);
+
+            if (assets.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-muted text-center p-3">No assets found.</td></tr>`;
+                try { applyAssetSearchFilter(); } catch {}
+                return;
+            }
+
+            for (const a of assets) {
+                if (a && a.ID) ASSET_CACHE[a.ID] = a;
+            }
+
+            
+            // My owned assets (includes Keys) - used to show granted users and enable Revoke
+            let myAssetsById = {};
+            try {
+                let myAssets = await agentEval("GetMyAssets", []);
+                if (!Array.isArray(myAssets)) myAssets = [];
+                myAssets = myAssets.map(normalizeAsset);
+                for (const a of myAssets) {
+                    if (a && a.ID) myAssetsById[a.ID] = a;
+                }
+            } catch (e) {
+                console.warn("GetMyAssets failed:", e);
+            }
+
+
+// My requests as a REQUESTER (status per asset: NONE/PENDING/APPROVED/DENIED)
+            let myReqStatusByAsset = {};
+            try {
+                let myReqs = await agentEval("GetMyRequests", []);
+                if (!Array.isArray(myReqs)) myReqs = [];
+                for (const r of myReqs) {
+                    const aid = r.AssetID || r.assetID || r.assetId || r.asset_id;
+                    const st = (r.Status || r.status || "").toString().toUpperCase();
+                    if (aid) myReqStatusByAsset[aid] = st;
+                }
+            } catch (e) {
+                console.warn("GetMyRequests failed:", e);
+            }
+
+// Pending requests for me as an OWNER (returns empty if I'm not an owner)
+            let pendingByAsset = {};
+            try {
+                let reqs = await agentEval("GetPendingRequests", []);
+                if (!Array.isArray(reqs)) reqs = [];
+                for (const r of reqs) {
+                    const aid = r.assetID || r.AssetID;
+                    if (!aid) continue;
+                    if (!pendingByAsset[aid]) pendingByAsset[aid] = [];
+                    pendingByAsset[aid].push(r);
+                }
+            } catch (e) {
+                // Not fatal: simply means "no owner pending requests" or not supported
+                console.warn("GetPendingRequests failed:", e);
+            }
+
+            // Persist state for Drawer (details/audit panel)
+            UI_STATE.meClientID = me;
+            UI_STATE.myAssetsById = myAssetsById;
+            UI_STATE.pendingByAsset = pendingByAsset;
+            UI_STATE.myReqStatusByAsset = myReqStatusByAsset;
+
+            tbody.innerHTML = "";
+
+            let ownedCount = 0;
+            let availableCount = 0;
+            let needsReviewCount = 0;
+            let pendingTotal = 0;
+            const requestsCount = Object.keys(myReqStatusByAsset || {}).length;
+
+            for (const v of Object.values(pendingByAsset || {})) {
+              if (Array.isArray(v)) pendingTotal += v.length;
+            }
+
+            assets.slice().reverse().forEach(asset => {
+asset = normalizeAsset(asset);
+
+                const isOwner = (me && asset.OwnerID && me === asset.OwnerID);
+                const review = (asset.NeedsManualReview === true || asset.needsManualReview === true);
+                const pend = pendingByAsset[asset.ID] || [];
+
+                if (isOwner) {
+                  ownedCount += 1;
+                  if (review) needsReviewCount += 1;
+                }
+
+                let statusParts = [];
+                if (isOwner) statusParts.push('<span class="badge bg-info">Owner</span>');
+
+                // Manual review badge (for metadata/category workflow)
+                if (review) {
+                    const sug = escapeHtml(asset.SuggestedCategory || asset.suggestedCategory || "");
+                    const conf = (asset.SuggestedConfidence ?? asset.suggestedConfidence);
+                    const confTxt = (conf !== undefined && conf !== null && conf !== "") ? ` ${escapeHtml(conf)}%` : "";
+                    statusParts.push(`<span class="badge bg-warning text-dark">Needs review</span> <span class="text-muted small">${sug}${confTxt}</span>`);
+                }
+
+                // Access status for current user (only meaningful when not owner)
+                let accessStatus = "NONE";
+                if (!isOwner) {
+                    accessStatus = (myReqStatusByAsset[asset.ID] || lastRequestStatus[reqKey(asset.ID)] || "NONE").toUpperCase();
+                }
+
+                if (!isOwner && (accessStatus === "APPROVED" || accessStatus === "GRANTED")) {
+                  availableCount += 1;
+                }
+
+                if (!isOwner) {
+                    if (accessStatus === "APPROVED" || accessStatus === "GRANTED") {
+                        statusParts.push('<span class="badge bg-success">Access: Approved</span>');
+                    } else if (accessStatus === "PENDING") {
+                        statusParts.push('<span class="badge bg-warning text-dark">Access: Pending</span>');
+                    } else if (accessStatus === "DENIED") {
+                        statusParts.push('<span class="badge bg-danger">Access: Denied</span>');
+                    } else {
+                        statusParts.push('<span class="badge bg-secondary">Access: None</span>');
+                    }
+                }
+
+                if (isOwner && pend.length > 0) {
+                  statusParts.push(`<span class="badge bg-warning text-dark">📥 ${pend.length} pending</span>`);
+                }
+
+                const statusHtml = statusParts.join(" ");
+                const officialCat = (asset.Category || asset.category || "").toString();
+                const aiSug = (asset.SuggestedCategory || asset.suggestedCategory || "").toString();
+                const aiConf = (asset.SuggestedConfidence ?? asset.suggestedConfidence);
+                const aiConfTxt = (aiConf !== undefined && aiConf !== null && aiConf !== "")
+                    ? ` <span class="text-muted small">(${escapeHtml(aiConf)}%)</span>`
+                    : "";
+                const aiCell = aiSug
+                    ? `${escapeHtml(aiSug)}${aiConfTxt}`
+                    : '<span class="text-muted">—</span>';
+
+                const catBadge = (officialCat === "Unverified")
+                    ? '<span class="badge bg-warning text-dark ms-1">Unverified</span>'
+                    : (officialCat ? '<span class="badge bg-success ms-1">Approved</span>' : '');
+                const catCell = `${escapeHtml(officialCat)} ${catBadge}`;
+
+
+                let actions = "";
+                const accessStatusForUI = (!isOwner) ? (myReqStatusByAsset[asset.ID] || lastRequestStatus[reqKey(asset.ID)] || "NONE").toUpperCase() : "OWNER";
+                const canRequest = (!isOwner) && (accessStatusForUI !== "PENDING");
+                const canDownload = isOwner || (accessStatusForUI === "APPROVED" || accessStatusForUI === "GRANTED");
+
+                actions += `<button class="btn btn-sm btn-outline-primary me-1" onclick="requestAccess('${asset.ID}')" ${canRequest ? "" : "disabled"}>${canRequest ? "Request" : "Request (pending)"}</button>`;
+                actions += `<button class="btn btn-sm btn-outline-success me-1" onclick="downloadAsset('${asset.ID}')" ${canDownload ? "" : "disabled"}>${canDownload ? "Download" : "Download (no access)"}</button>`;
+                actions += `<button class="btn btn-sm btn-outline-secondary me-1" onclick="openAssetDrawer('${asset.ID}', {overviewOnly:true})">Details</button>`;
+                if (isOwner) {
+                    actions += `<button class="btn btn-sm btn-outline-warning me-1" onclick="rotateAssetContentUI('${asset.ID}')">Rotate</button>`;
+                }
+
+                // Owner quick-approve (manual review)
+                if (isOwner && review) {
+                    actions += `<button class="btn btn-sm btn-warning me-1" onclick="approveCategoryUI('${asset.ID}')">Approve category</button>`;
+                }
+
+                // Owner actions: show pending requests for THIS asset
+                if (pend.length > 0) {
+                    actions += `<div class="mt-1 p-1 border rounded small">
+                        <div><b>Pending requests:</b></div>
+                    `;
+                    for (const r of pend) {
+                        const requesterID = r.requesterID || r.RequesterID;
+                        const requesterName = r.requester || r.Requester || (requesterID ? requesterID.substring(0, 10) + "..." : "unknown");
+                        actions += `
+                          <div class="d-flex align-items-center justify-content-between mt-1">
+                            <div title="${requesterID}">${escapeHtml(requesterName)}</div>
+                            <div>
+                              <button class="btn btn-sm btn-success me-1" onclick="grantAccess('${asset.ID}','${requesterID}')">Grant</button>
+                              <button class="btn btn-sm btn-danger" onclick="denyAccessUI('${asset.ID}','${requesterID}')">Deny</button>
+</div>
+                          </div>
+                        `;
+                    }
+                    actions += `</div>`;
+                }
+
+                // Owner actions: show granted users (Keys are only available via GetMyAssets)
+                const owned = myAssetsById[asset.ID];
+                const keysObj = owned ? (owned.Keys || owned.keys) : null;
+                if (keysObj && typeof keysObj === "object") {
+                    let grantedIds = Object.keys(keysObj).filter(k => k && k !== me && k !== asset.OwnerID);
+                    if (grantedIds.length > 0) {
+                        actions += `<div class="mt-1 p-1 border rounded small">
+                            <div><b>Granted users:</b></div>
+                        `;
+                        for (const gid of grantedIds) {
+                            const short = (gid.length > 14) ? (gid.substring(0, 14) + "...") : gid;
+                            actions += `
+                              <div class="d-flex align-items-center justify-content-between mt-1">
+                                <div title="${gid}"><code class="small">${escapeHtml(short)}</code></div>
+                                <div>
+                                  <button class="btn btn-sm btn-outline-danger" onclick="revokeAccess('${asset.ID}','${gid}')">Revoke</button>
+                                </div>
+                              </div>
+                            `;
+                        }
+                        actions += `</div>`;
+                    }
+                }
+
+
+                const _search = `${asset.ID||""} ${asset.Title||asset.title||""} ${asset.Authors||asset.authors||""} ${officialCat||""} ${aiSug||""} ${asset.CIDHash||asset.cidHash||""}`.replace(/\s+/g," ").trim();
+
+                tbody.innerHTML += `
+                    <tr data-search="${escapeHtml(_search)}" data-owned="${isOwner?1:0}" data-review="${review?1:0}" data-access="${escapeHtml(accessStatus)}">
+                        <td>${escapeHtml(asset.ID || '')}</td>
+                        <td>${escapeHtml(asset.Title || asset.title || '')}</td>
+                        <td>${escapeHtml(asset.Authors || asset.authors || '')}</td>
+                        <td>${catCell}</td>
+                        <td>${aiCell}</td>
+                        <td class="role-security-cell"><code class="small">${escapeHtml(asset.CIDHash || asset.cidHash || '')}</code></td>
+                        <td>${statusHtml}</td>
+                        <td>${actions}</td>
+                    </tr>
+                `;
+
+            });
+            try { applyAssetSearchFilter(); } catch {}
+        } catch (err) {
+            console.error(err);
+            const msg = humanizeErrorText(err && err.message ? err.message : String(err));
+            tbody.innerHTML = `<tr><td colspan="8" class="text-danger text-center p-3">${escapeHtml(msg)}</td></tr>`;
+            log("❌ Load Error: " + (err && err.message ? err.message : err));
+        }
+    }
+
+
+    
+    function applyAssetSearchFilter() {
+    const inp = document.getElementById("assetSearchInput");
+    const q = (inp ? inp.value : "").trim().toLowerCase();
+    const sel = document.getElementById("assetFilterSelect");
+    const mode = (sel ? sel.value : "all");
+    const tbody = document.getElementById("filesTable");
+    if (!tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    let visible = 0;
+
+    for (const r of rows) {
+        const hay = ((r.dataset && r.dataset.search) ? r.dataset.search : r.textContent).toLowerCase();
+        const matchQuery = (!q) ? true : hay.includes(q);
+
+        const owned = (r.dataset.owned === "1");
+        const review = (r.dataset.review === "1");
+        const access = (r.dataset.access || "").toUpperCase();
+
+        let matchMode = true;
+        if (mode === "owned") matchMode = owned;
+        else if (mode === "available") matchMode = (!owned) && (access === "APPROVED" || access === "GRANTED");
+        else if (mode === "pending") matchMode = (!owned) && (access === "PENDING");
+        else if (mode === "needs_review") matchMode = review;
+        else if (mode === "denied") matchMode = (!owned) && (access === "DENIED");
+
+        const show = matchQuery && matchMode;
+        r.style.display = show ? "" : "none";
+        if (show) visible++;
+    }
+
+    const cnt = document.getElementById("assetFilterCount");
+    if (cnt) cnt.textContent = (rows.length ? `${visible}/${rows.length}` : "");
+}
+async function requestAccess(assetId) {
+        const now = Date.now();
+        const key = reqKey(assetId);
+        const last = lastRequestTs[key] || 0;
+        const lastStatus = lastRequestStatus[key] || "";
+
+        // Cooldown ONLY for truly pending requests (avoid "DENIED but pending cooldown" confusion)
+        if (lastStatus === "PENDING" && (now - last) < REQUEST_TTL_MS) {
+            log(`⏳ Request already pending for ${assetId} (cooldown)`);
+            return;
+        }
+
+        log(`Requesting access for ${assetId} via local agent ${agentBase()}...`);
+
+        try {
+          const reason = await openAccessRequestModal();
+          if (reason === null) return;
+          const resp = await agentSubmit("RequestAccessWithReason", [assetId, reason || ""]);
+            try { log("ℹ️ Response: " + (typeof resp === "string" ? resp : JSON.stringify(resp))); } catch {}
+
+            // Track request status locally to avoid misleading cooldown after DENIED/APPROVED
+            let status = "";
+            if (resp && typeof resp === "object" && resp.status) status = String(resp.status);
+            if (status) lastRequestStatus[key] = status;
+            if (status === "PENDING") {
+                pendingRequests.add(assetId);
+                lastRequestTs[key] = now;
+            } else {
+                pendingRequests.delete(assetId);
+                delete lastRequestTs[key];
+            }
+
+            if (status === "DENIED") {
+                const msg = (resp && resp.message) ? String(resp.message) : "DENIED";
+                log(`⚠️ Access request DENIED: ${msg}`);
+            } else if (status === "PENDING") {
+                log("✅ Access request created (PENDING).");
+            } else if (status) {
+                log(`✅ Access request status: ${status}`);
+            } else {
+                log("✅ Access request submitted (blockchain).");
+            }
+            setTimeout(loadFiles, 1000);
+        } catch (e) {
+            console.error(e);
+            pendingRequests.delete(assetId);
+            delete lastRequestTs[key];
+            lastRequestStatus[key] = "ERROR";
+            log("❌ " + e.message);
+        }
+    }
+
+
+async function cancelMyRequest(assetId) {
+    const okTok = await ensureAgentToken(false);
+    if (!okTok) return;
+
+    const ok = await uiConfirm({
+        title: "Cancel request",
+        body: `Cancel your pending request for <code>${escapeHtml(assetId)}</code>?`,
+        okText: "Cancel request",
+        okClass: "btn-danger"
+    });
+    if (!ok) return;
+
+    try {
+        await agentSubmit("CancelMyRequest", [assetId]);
+        showToast("Request cancelled", "success");
+        log("✅ Request cancelled: " + assetId);
+        await loadRequestsView();
+        setTimeout(loadFiles, 400);
+    } catch (e) {
+        console.error(e);
+        await uiAlert({title:"Cancel failed", body: (e && e.message) ? e.message : String(e), tone:"danger"});
+    }
+}
+
+async function reopenMyRequest(assetId) {
+    const okTok = await ensureAgentToken(false);
+    if (!okTok) return;
+
+    const reason = await uiPrompt({
+        title: "Reopen access request",
+        label: "Reason (optional)",
+        placeholder: "Why do you need access now?",
+        value: "",
+        multiline: true,
+        okText: "Reopen"
+    });
+    if (reason === null) return;
+
+    try {
+        await agentSubmit("RequestAccessWithReason", [assetId, reason || ""]);
+        showToast("Request reopened", "success");
+        log("✅ Request reopened: " + assetId);
+        await loadRequestsView();
+        setTimeout(loadFiles, 600);
+    } catch (e) {
+        console.error(e);
+        await uiAlert({title:"Reopen failed", body: (e && e.message) ? e.message : String(e), tone:"danger"});
+    }
+}
+
+    async function grantAccess(assetId, requesterID) {
+        try {
+            if (!requesterID) {
+                await uiAlert({title:"Grant access", body:"RequesterID is missing", tone:"warning"});
+                return;
+            }
+
+            // 1) Fetch my encrypted AES key from chaincode (transaction-safe)
+            const ownerKeyResp = await agentSubmit("RequestMyEncryptedKey", [assetId]);
+            const ownerStatus = (ownerKeyResp && (ownerKeyResp.status || ownerKeyResp.Status)) || "";
+            if (ownerStatus !== "OK") {
+                await uiAlert({title:"Grant access", body:`Cannot get your AES key (owner). Status=${ownerStatus}`, tone:"warning"});
+                return;
+            }
+            const ownerEncKey = ownerKeyResp.key || (ownerKeyResp.result && ownerKeyResp.result.key) || "";
+            if (!ownerEncKey) {
+                await uiAlert({title:"Grant access", body:"No encrypted key returned for owner", tone:"warning"});
+                return;
+            }
+
+            // 2) Decrypt AES key via local agent (private key stays in agent)
+            const aesKey = await agentRsaDecrypt(ownerEncKey);
+            if (!aesKey) {
+                await uiAlert({title:"Grant access", body:"Failed to decrypt owner AES key", tone:"danger"});
+                return;
+            }
+            log(`🔹 AES key obtained for granting.`);
+
+            // 3) Get requester's public key from blockchain
+            const requesterPub = await agentEval("GetUserPublicKey", [requesterID]);
+            if (!requesterPub) {
+                await uiAlert({title:"Grant access", body:"Requester public key not found on-chain", tone:"warning"});
+                return;
+            }
+
+            // 4) Encrypt AES key for requester
+            let enc = new JSEncrypt();
+            enc.setPublicKey(requesterPub);
+            const encryptedForRequester = enc.encrypt(aesKey.trim());
+            if (!encryptedForRequester) {
+                await uiAlert({title:"Grant access", body:"Failed to encrypt AES key for requester", tone:"danger"});
+                return;
+            }
+
+            // 5) Submit GrantAccess
+            await agentSubmit("GrantAccess", [assetId, requesterID, encryptedForRequester]);
+            log("✅ Access granted on blockchain.");
+            setTimeout(loadFiles, 800);
+        } catch (e) {
+            console.error(e);
+            await uiAlert({title:"Grant failed", body: (e && e.message) ? e.message : String(e), tone:"danger"});
+        }
+    }
+
+
+    async function revokeAccess(assetId, targetUserId) {
+        const ok = await uiConfirm({title:"Revoke access", body:"This will revoke the user’s ability to download this asset. An audit event will be written.", okText:"Revoke", okClass:"btn-danger"});
+        if (!ok) return;
+        const reason = (await uiPrompt({title:"Revoke access", label:"Reason (written to audit log)", value:"manual revoke", placeholder:"e.g. policy change / user left project", multiline:false, okText:"Continue"})) || "manual revoke";
+        log(`Revoking access for ${targetUserId} via local agent...`);
+
+        try {
+            await agentSubmit("RevokeAccess", [assetId, targetUserId, reason]);
+            log("✅ Revoked (blockchain).");
+            setTimeout(loadFiles, 1000);
+        } catch (e) {
+            console.error(e);
+            log("❌ Revoke Error: " + (e.message || e));
+        }
+    }
+
+    async function rotateAssetContentUI(assetId) {
+        const ok = await uiConfirm({title:"Rotate asset content", body:"This uploads a NEW encrypted payload to IPFS, updates CID on-chain, and resets per-user keys. Everyone except you will lose access until you re-grant it.", okText:"Rotate", okClass:"btn-warning"});
+        if (!ok) return;
+
+        try {
+            if (!myPublicKey) await loadMyPublicKey();
+            const assetAny = ASSET_CACHE[assetId] || await agentEval("ReadAsset", [assetId]);
+            const asset = normalizeAsset(assetAny);
+
+            const who = await agentEval("WhoAmI", []);
+            const me = (who && (who.clientID || who.clientId || who.id)) ? (who.clientID || who.clientId || who.id) : null;
+            if (!me || !asset.OwnerID || me !== asset.OwnerID) {
+                await uiAlert({title:"Rotate", body:"Only the asset OWNER can rotate content.", tone:"warning"});
+                return;
+            }
+const cid = ((asset.CIDHash || asset.CID || "").trim() || asset.cidHash || asset.CIDHash || (asset.metadata && (asset.metadata.cidHash || asset.metadata.cid)) || "").toString().trim();
+            if (!cid) {
+                await uiAlert({title:"Rotate", body:"CID is missing in asset metadata (expected asset.cidHash from chaincode).", tone:"warning"});
+                return;
+            }
+
+            log(`🔄 Rotating content for ${assetId}...`);
+            log(`1) Fetching your AES key (owner) from chaincode...`);
+
+            const ownerKeyResp = await agentSubmit("RequestMyEncryptedKey", [assetId]);
+            const ownerStatus = String((ownerKeyResp && (ownerKeyResp.status || ownerKeyResp.Status)) || "");
+            if (ownerStatus !== "OK") {
+                await uiAlert({title:"Grant access", body:`Cannot get your AES key (owner). Status=${ownerStatus}`, tone:"warning"});
+                return;
+            }
+            const ownerEncKey = ownerKeyResp.key || (ownerKeyResp.result && ownerKeyResp.result.key) || "";
+            if (!ownerEncKey) {
+                await uiAlert({title:"Grant access", body:"No encrypted key returned for owner", tone:"warning"});
+                return;
+            }
+
+            const aesKeyB64 = await agentRsaDecrypt(ownerEncKey);
+            if (!aesKeyB64) {
+                await uiAlert({title:"Grant access", body:"Failed to decrypt owner AES key", tone:"danger"});
+                return;
+            }
+
+            log(`2) Downloading current encrypted payload from IPFS (CID: ${cid})...`);
+            const res = await fetch(`${API_URL}/download/${cid}`);
+            if (!res.ok) {
+                log(`❌ Failed to download. HTTP ${res.status}`);
+                return;
+            }
+
+            const encryptedStr = await res.text();
+            const parts = encryptedStr.split("::");
+            if (parts.length !== 2) throw new Error("Invalid encrypted file format");
+            const iv = CryptoJS.enc.Base64.parse(parts[0]);
+            const ciphertext = CryptoJS.enc.Base64.parse(parts[1]);
+
+            const aesKeyWA = CryptoJS.enc.Base64.parse(aesKeyB64);
+            const decryptedWA = CryptoJS.AES.decrypt(
+                { ciphertext: ciphertext },
+                aesKeyWA,
+                { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
+            );
+
+            decryptedWA.clamp();
+
+            const decryptedBase64 = decryptedWA.toString(CryptoJS.enc.Base64);
+            const fileHash = CryptoJS.SHA256(decryptedBase64).toString();
+
+            const expectedHash = String(asset.FileHash || asset.fileHash || "");
+            if (expectedHash && fileHash !== expectedHash) {
+                const cont = await uiConfirm({title:"Hash mismatch", body:`Expected: <code>${escapeHtml(expectedHash)}</code><br>Actual: <code>${escapeHtml(fileHash)}</code><br><br>Continue rotation anyway?`, okText:"Continue", okClass:"btn-warning"});
+                if (!cont) return;
+            }
+
+            log(`3) Re-encrypting with NEW AES key...`);
+            const newAesKeyWA = CryptoJS.lib.WordArray.random(256 / 8);
+            const newAesKeyB64 = CryptoJS.enc.Base64.stringify(newAesKeyWA);
+            const newIv = CryptoJS.lib.WordArray.random(128 / 8);
+
+            const fileData = CryptoJS.enc.Base64.parse(decryptedBase64);
+            const encrypted = CryptoJS.AES.encrypt(
+                fileData,
+                newAesKeyWA,
+                { iv: newIv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
+            );
+
+            const newPayload = newIv.toString(CryptoJS.enc.Base64) + "::" + encrypted.ciphertext.toString(CryptoJS.enc.Base64);
+
+            // Wrap NEW AES key for OWNER
+            let encryptor = new JSEncrypt();
+            encryptor.setPublicKey(myPublicKey);
+            const newEncryptedAesKeyForOwner = encryptor.encrypt(newAesKeyB64);
+            if (!newEncryptedAesKeyForOwner) throw new Error("RSA Encryption of NEW AES key failed.");
+
+            log(`4) Uploading NEW encrypted payload to IPFS (server)...`);
+            const blob = new Blob([newPayload], { type: "application/octet-stream" });
+
+            // Filename policy (server.py):
+            //   YYYYMMDD_Author_Topic.ext.enc
+            // - Author: [a-zA-Z]+
+            // - Topic:  [a-zA-Z0-9]+
+            // - ext: one of ALLOWED_EXTENSIONS (pdf,csv,json,txt,xlsx,docx)
+            const d = new Date();
+            const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+            const author = (String(CURRENT_USER || "User").replace(/[^a-zA-Z]/g, "") || "User");
+            const topic = "Rotate"; // alnum only
+            const realExt = "txt";
+            const filename = `${stamp}_${author}_${topic}.${realExt}.enc`;
+
+            const fd = new FormData();
+            fd.append('file', blob, filename);
+            fd.append('description', String(asset.Description || asset.description || "rotated content"));
+            fd.append('fileHash', fileHash);
+            fd.append('owner', CURRENT_USER);
+            fd.append('encryptedAesKey', newEncryptedAesKeyForOwner);
+
+            fd.append('title', String(asset.Title || asset.title || ""));
+            fd.append('authors', String(asset.Authors || asset.authors || ""));
+            fd.append('discipline', String(asset.Discipline || asset.discipline || ""));
+            fd.append('license', String(asset.License || asset.license || ""));
+            fd.append('doi', String(asset.DOI || asset.doi || ""));
+            fd.append('keywords', String(asset.Keywords || asset.keywords || ""));
+
+            const up = await fetch(`${API_URL}/upload`, { method: 'POST', body: fd });
+            const upj = await up.json();
+            // server.py returns: {status:"success", cid:"..."} on success
+            if (!upj || upj.status !== 'success') {
+                throw new Error((upj && (upj.message || upj.error)) ? (upj.message || upj.error) : "upload failed");
+            }
+            const newCID = String(upj.cid || "").trim();
+            if (!newCID) throw new Error("upload did not return CID");
+            log(`✅ IPFS OK. New CID: ${newCID}`);
+
+            log(`5) Writing rotation to blockchain (RotateAssetContent)...`);
+            await agentSubmit("RotateAssetContent", [assetId, newCID, fileHash, newEncryptedAesKeyForOwner, "{}"]);
+            log("✅ Content rotated on-chain. NOTE: all previously granted users lost access; re-grant if needed.");
+            setTimeout(loadFiles, 1000);
+        } catch (e) {
+            console.error(e);
+            log("❌ Rotate failed: " + (e.message || e));
+        }
+    }
+
+    async function downloadAsset(assetId) {
+        try {
+            const assetAny = ASSET_CACHE[assetId] || await agentEval("ReadAsset", [assetId]);
+            const asset = normalizeAsset(assetAny);
+            const cid = asset.CIDHash || asset.cidHash;
+            const expectedHash = asset.FileHash || asset.fileHash;
+
+            if (!cid) {
+                await uiAlert({title:"Download", body:"CID missing in asset metadata", tone:"warning"});
+                return;
+            }
+
+            // Fetch my encrypted AES key from chaincode (transaction-safe)
+            const keyResp = await agentSubmit("RequestMyEncryptedKey", [assetId]);
+            const status = (keyResp && (keyResp.status || keyResp.Status)) || "";
+            if (status !== "OK") {
+                const msg = (keyResp && (keyResp.message || keyResp.Message)) || "Access denied";
+                await uiAlert({title:"Download denied", body: String(msg || "Access denied"), tone:"warning"});
+                return;
+            }
+            const encKey = (keyResp.key || keyResp.Key || "").trim();
+            if (!encKey) {
+                await uiAlert({title:"Download", body:"No encrypted key returned", tone:"warning"});
+                return;
+            }
+            // Decrypt AES key locally
+            const aesKeyB64 = await agentRsaDecrypt(encKey);
+            if (!aesKeyB64) {
+                await uiAlert({title:"Download", body:"Failed to decrypt AES key (wrong private key?)", tone:"danger"});
+                return;
+            }
+
+            await downloadFile(cid, encodeURIComponent(aesKeyB64.trim()), assetId, expectedHash);
+        } catch (e) {
+            console.error(e);
+            await uiAlert({title:"Download failed", body: (e && e.message) ? e.message : String(e), tone:"danger"});
+        }
+    }
+
+async function downloadFile(cid, aesKeyB64, assetId, expectedHash) {
+        try {
+            // IMPORTANT: aesKeyB64 was passed through encodeURIComponent in HTML
+            aesKeyB64 = decodeURIComponent(aesKeyB64);
+
+            log(`Downloading encrypted file from IPFS (CID: ${cid})...`);
+            log(`🔹 AES key obtained for download.`);
+
+            // 1) Download encrypted payload from backend -> IPFS
+            const res = await fetch(`${API_URL}/download/${cid}`);
+            if (!res.ok) {
+                log(`❌ Failed to download. HTTP ${res.status}`);
+                return;
+            }
+
+            // "<iv_b64>::<ciphertext_b64>"
+            const encryptedStr = await res.text();
+            const parts = encryptedStr.split("::");
+            if (parts.length !== 2) {
+                throw new Error("Invalid encrypted file format");
+            }
+
+            const iv = CryptoJS.enc.Base64.parse(parts[0]);
+            const ciphertext = CryptoJS.enc.Base64.parse(parts[1]);
+
+            // 2) AES decrypt using RSA-decrypted key (which is already Base64)
+            const aesKeyWA = CryptoJS.enc.Base64.parse(aesKeyB64);
+
+            const decryptedWA = CryptoJS.AES.decrypt(
+                { ciphertext: ciphertext },
+                aesKeyWA,
+                { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
+            );
+            decryptedWA.clamp();
+
+            // 3) Verify hash of BASE64 string (same approach as upload)
+            const decryptedBase64 = decryptedWA.toString(CryptoJS.enc.Base64);
+            const actualHash = CryptoJS.SHA256(decryptedBase64).toString();
+
+            if (actualHash !== expectedHash) {
+                log("❌ HASH MISMATCH! Download aborted.");
+                log(`Expected: ${expectedHash}`);
+                log(`Actual:   ${actualHash}`);
+                await uiAlert({title:"Integrity check failed", body:"Hash mismatch. File may be corrupted or tampered.", tone:"danger"});
+                return;
+            }
+
+            log("✅ Hash Verified! Logging download to blockchain...");
+
+            // 4) Log download to blockchain (via agent)
+            try {
+                await agentSubmit("LogDownload", [assetId]);
+                log("✅ Download logged (blockchain).");
+            } catch (e) {
+                console.error(e);
+                log("⚠️ Could not log download: " + e.message);
+            }
+
+            // 5) Save file (restore bytes from base64)
+            const byteChars = atob(decryptedBase64);
+            const byteNumbers = new Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) {
+                byteNumbers[i] = byteChars.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: "application/octet-stream" });
+
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `${assetId}.bin`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+
+            log("✅ File saved.");
+
+        } catch (e) {
+            console.error(e);
+            log("❌ Download/Decrypt Error: " + e.message);
+        }
+    }
+
+
+
+    async function showMetadata(assetId) {
+        try {
+            const full = await agentEval("ReadAsset", [assetId]);
+            const asset = normalizeAsset(full);
+            const meta = asset.metadata || asset.Metadata || {};
+            const sug = asset.SuggestedCategory || asset.suggestedCategory || "";
+            const conf = asset.SuggestedConfidence ?? asset.suggestedConfidence;
+            const review = (asset.NeedsManualReview === true || asset.needsManualReview === true);
+
+            const cat = asset.Category || asset.category || "";
+            const catBadge = review
+                ? '<span class="badge bg-warning text-dark ms-1">Needs review</span>'
+                : (cat === "Unverified"
+                    ? '<span class="badge bg-warning text-dark ms-1">Unverified</span>'
+                    : '<span class="badge bg-success ms-1">Approved</span>');
+
+            const suggestedHtml = `${escapeHtml(sug || "—")}` +
+                ((conf !== undefined && conf !== null && conf !== "")
+                    ? ` <span class="text-muted small">(${escapeHtml(conf)}%)</span>`
+                    : "");
+
+            const bodyHtml = `
+              <div class="row g-2">
+                <div class="col-md-6"><b>Asset ID:</b> ${escapeHtml(asset.ID)}</div>
+                <div class="col-md-6"><b>OwnerID:</b> <code>${escapeHtml(asset.OwnerID)}</code></div>
+                <div class="col-md-12"><b>CID:</b> <code>${escapeHtml(asset.CIDHash)}</code></div>
+                <div class="col-md-12"><b>Category:</b> ${escapeHtml(cat)} ${catBadge}</div>
+                <hr class="my-2">
+                <div class="col-md-6"><b>Title:</b> ${escapeHtml(meta.title || asset.Title || "")}</div>
+                <div class="col-md-6"><b>Authors:</b> ${escapeHtml(meta.authors || asset.Authors || "")}</div>
+                <div class="col-md-6"><b>Discipline:</b> ${escapeHtml(meta.discipline || asset.Discipline || "")}</div>
+                <div class="col-md-6"><b>License:</b> ${escapeHtml(meta.license || asset.License || "")}</div>
+                <div class="col-md-6"><b>DOI:</b> ${escapeHtml(meta.doi || asset.DOI || "")}</div>
+                <div class="col-md-6"><b>Keywords:</b> ${escapeHtml(meta.keywords || asset.Keywords || "")}</div>
+                <hr class="my-2">
+                <div class="col-md-12"><b>Suggested:</b> ${suggestedHtml}</div>
+              </div>
+            `;
+            document.getElementById("metadataModalBody").innerHTML = bodyHtml;
+
+            // If Bootstrap JS isn't available (e.g., no internet/CDN blocked), fall back to a simple dialog.
+            if (window.bootstrap && bootstrap.Modal) {
+                const modal = new bootstrap.Modal(document.getElementById("metadataModal"));
+                modal.show();
+            } else {
+                // Minimal fallback: show as an alert with plain text.
+                const txt =
+                    `Asset: ${asset.ID}\n` +
+                    `Owner: ${asset.OwnerID}\n` +
+                    `CID: ${asset.CIDHash}\n` +
+                    `Category: ${cat}${review ? ' (Needs review)' : ''}\n` +
+                    `Title: ${(meta.title || asset.Title || '')}\n` +
+                    `Authors: ${(meta.authors || asset.Authors || '')}\n` +
+                    `Discipline: ${(meta.discipline || asset.Discipline || '')}\n` +
+                    `License: ${(meta.license || asset.License || '')}\n` +
+                    `DOI: ${(meta.doi || asset.DOI || '')}\n` +
+                    `Keywords: ${(meta.keywords || asset.Keywords || '')}\n` +
+                    `Suggested: ${sug || '—'}${(conf !== undefined && conf !== null && conf !== '') ? ' (' + conf + '%)' : ''}`;
+                await uiAlert({title:"Metadata", body: txt, tone:"info"});
+            }
+        } catch (e) {
+            console.error(e);
+            await uiAlert({title:"Metadata load failed", body: (e && e.message) ? e.message : String(e), tone:"danger"});
+        }
+    }
+
+    async function approveCategoryUI(assetId) {
+    try {
+        const full = await agentEval("ReadAsset", [assetId]);
+        const asset = normalizeAsset(full);
+        const sug = (asset.SuggestedCategory || asset.suggestedCategory || "").toString();
+        const conf = (asset.SuggestedConfidence ?? asset.suggestedConfidence);
+        const current = (asset.Category || asset.category || "").toString();
+        const needsReview = (asset.NeedsManualReview === true || asset.needsManualReview === true);
+
+        // Fill modal
+        document.getElementById("approveAssetId").textContent = assetId;
+        document.getElementById("approveCurrent").textContent = current || "—";
+        document.getElementById("approveSuggested").textContent = sug || "—";
+        document.getElementById("approveConfidence").textContent = (conf !== undefined && conf !== null && conf !== "") ? String(conf) + "%" : "—";
+        document.getElementById("approveNeedsReview").textContent = needsReview ? "Yes" : "No";
+
+        const input = document.getElementById("approveCategoryInput");
+        input.value = (sug || current || "").trim();
+
+        const chk = document.getElementById("approveAck");
+        chk.checked = false;
+
+        const mEl = document.getElementById("approveModal");
+        const modal = bootstrap.Modal.getOrCreateInstance(mEl, { backdrop: "static" });
+
+        const okBtn = document.getElementById("approveModalOk");
+        okBtn.disabled = true;
+
+        const onChange = () => { okBtn.disabled = !(chk.checked && (input.value || "").trim()); };
+        chk.onchange = onChange;
+        input.oninput = onChange;
+        onChange();
+
+        const approved = await new Promise((resolve) => {
+            const cleanup = () => {
+                okBtn.onclick = null;
+                mEl.removeEventListener("hidden.bs.modal", onHidden);
+            };
+            const onHidden = () => { cleanup(); resolve(null); };
+            okBtn.onclick = () => {
+                const v = (input.value || "").trim();
+                cleanup();
+                modal.hide();
+                resolve(v);
+            };
+            mEl.addEventListener("hidden.bs.modal", onHidden);
+            modal.show();
+            setTimeout(() => input.focus(), 100);
+        });
+
+        if (!approved) return;
+
+        await agentSubmit("ApproveCategory", [assetId, approved]);
+        log("✅ Category approved: " + approved);
+        showToast("Category approved", "success");
+        setTimeout(loadFiles, 800);
+    } catch (e) {
+        console.error(e);
+        await uiAlert({title:"Approve failed", body: (e && e.message) ? e.message : String(e), tone:"danger"});
+    }
+}
+
+    async function denyAccessUI(assetId, requesterID) {
+        try {
+            const reason = await uiPrompt({title:"Deny access", label:"Reason (optional)", value:"Manual deny", placeholder:"e.g. not enough justification / policy", multiline:true, okText:"Deny", cancelText:"Cancel"}); if (reason === null) return;
+            await agentSubmit("DenyAccess", [assetId, requesterID, reason || "Manual deny"]);
+            log("✅ Access denied (manual).");
+            setTimeout(loadFiles, 800);
+        } catch (e) {
+            console.error(e);
+            await uiAlert({title:"Deny failed", body: (e && e.message) ? e.message : String(e), tone:"danger"});
+        }
+    }
+
+
+    function secPanelVisible() {
+        const panel = document.getElementById("securityPanel");
+        if (!panel) return;
+        const show = (IDENTITY && IDENTITY.role === "SecurityService") || (CURRENT_USER === "SecurityService");
+        panel.classList.toggle("d-none", !show);
+    }
+function secOut(v) {
+        const out = document.getElementById("secOut");
+        if (!out) return;
+        if (v === undefined) out.textContent = "";
+        else if (typeof v === "string") out.textContent = v;
+        else out.textContent = JSON.stringify(v, null, 2);
+    }
+
+    function secGetTarget() {
+        const el = document.getElementById("secTargetId");
+        const id = (el?.value || "").trim();
+        if (!id) throw new Error("Target clientID is empty");
+        return id;
+    }
+
+    async function secCheck() {
+        try {
+            if (CURRENT_USER !== "SecurityService") throw new Error("Switch to SecurityService first");
+            const id = secGetTarget();
+            const res = await agentEval("IsUserBlocked", [id]);
+            secOut({ clientID: id, blocked: res });
+            log(`ℹ️ IsUserBlocked => ${res}`);
+        } catch (e) {
+            console.error(e);
+            await uiAlert({title:"Security check failed", body: (e && e.message) ? e.message : String(e), tone:"danger"});
+        }
+    }
+
+    async function secBlock() {
+        try {
+            if (CURRENT_USER !== "SecurityService") throw new Error("Switch to SecurityService first");
+            const id = secGetTarget();
+            const reason = (document.getElementById("secReason")?.value || "manual block").trim();
+            await agentSubmit("BlockUser", [id, reason]);
+            secOut({ clientID: id, action: "BLOCK", reason });
+            log(`✅ BlockUser: ${id}`);
+            // show fresh state
+            try {
+                const res = await agentEval("IsUserBlocked", [id]);
+                log(`ℹ️ IsUserBlocked => ${res}`);
+            } catch {}
+        } catch (e) {
+            console.error(e);
+            await uiAlert({title:"Block failed", body: (e && e.message) ? e.message : String(e), tone:"danger"});
+        }
+    }
+
+    async function secUnblock() {
+        try {
+            if (CURRENT_USER !== "SecurityService") throw new Error("Switch to SecurityService first");
+            const id = secGetTarget();
+            await agentSubmit("UnblockUser", [id]);
+            secOut({ clientID: id, action: "UNBLOCK" });
+            log(`✅ UnblockUser: ${id}`);
+            try {
+                const res = await agentEval("IsUserBlocked", [id]);
+                log(`ℹ️ IsUserBlocked => ${res}`);
+            } catch {}
+        } catch (e) {
+            console.error(e);
+            await uiAlert({title:"Unblock failed", body: (e && e.message) ? e.message : String(e), tone:"danger"});
+        }
+    }
+
+    async function secListBlocked() {
+        try {
+            if (CURRENT_USER !== "SecurityService") throw new Error("Switch to SecurityService first");
+            const res = await agentEval("ListBlockedUsers", []);
+            secOut(res);
+            log("ℹ️ ListBlockedUsers loaded");
+        } catch (e) {
+            console.error(e);
+            await uiAlert({title:"List blocked failed", body: (e && e.message) ? e.message : String(e), tone:"danger"});
+        }
+    }
+
+
+
+    // ============================
+// Connection status (health)
+// ============================
+async function checkHealth(profile) {
+    const base = AGENTS[profile];
+    try {
+        const r = await fetch(base + "/health");
+        if (!r.ok) return { ok: false, status: r.status };
+        const txt = await r.text();
+        return { ok: true, status: r.status, text: txt };
+    } catch (e) {
+        return { ok: false, status: 0, error: String(e && e.message ? e.message : e) };
+    }
+}
+
+async function checkHealthAll() {
+    const row = document.getElementById("connStatusRow");
+    if (!row) return;
+    const parts = [];
+    for (const p of Object.keys(AGENTS)) {
+        const h = await checkHealth(p);
+        const hasTok = !!(localStorage.getItem(profileKeyToken(p)) || "").trim();
+        const tone = h.ok ? (hasTok ? "success" : "warning") : "danger";
+        const title = h.ok ? "health ok" : (h.error || ("HTTP " + h.status));
+        parts.push(`
+          <span class="badge bg-${tone} me-2" title="${escapeHtml(title)}">
+            ${escapeHtml(p)} · ${h.ok ? "UP" : "DOWN"}${hasTok ? "" : " · no token"}
+          </span>
+        `);
+    }
+    row.innerHTML = parts.join("");
+}
+
+// ============================
+// Tab navigation (Assets / Requests / Activity / Security / Settings)
+// ============================
+function hookTabs() {
+    const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabEls.forEach((el) => {
+        el.addEventListener("shown.bs.tab", async (evt) => {
+            const id = evt.target && evt.target.id ? evt.target.id : "";
+          if (id === "tab-dashboard") await loadDashboard(true);
+            if (id === "tab-requests") await loadRequestsView();
+            if (id === "tab-activity") await loadActivityView();
+          if (id === "tab-security") await loadRiskDashboard();
+            if (id === "tab-settings") await checkHealthAll();
+        });
+    });
+}
+
+async function loadRequestsView() {
+    const okTok = await ensureAgentToken(false);
+    if (!okTok) return;
+
+    const outMine = document.getElementById("myRequestsTable");
+    const outInbox = document.getElementById("inboxRequestsTable");
+    if (outMine) outMine.innerHTML = `<tr><td colspan="5" class="text-muted text-center">Loading…</td></tr>`;
+    if (outInbox) outInbox.innerHTML = `<tr><td colspan="5" class="text-muted text-center">Loading…</td></tr>`;
+
+    // My outbound requests
+    try {
+        let myReqs = await agentEval("GetMyRequests", []);
+        if (!Array.isArray(myReqs)) myReqs = [];
+        if (outMine) {
+            if (myReqs.length === 0) {
+                outMine.innerHTML = `<tr><td colspan="5" class="text-muted text-center">No requests.</td></tr>`;
+            } else {
+                outMine.innerHTML = myReqs.map(r => {
+                    const aid = (r.AssetID || r.assetID || r.assetId || "").toString();
+                    const st = ((r.Status || r.status || "").toString().toUpperCase() || "—").trim();
+                    const reason = (r.Reason || r.reason || "").toString();
+                    const updated = (r.UpdatedAt || r.updatedAt || r.updatedAt || r.Updated || r.updated || r.Timestamp || r.timestamp || r.createdAt || "").toString();
+
+                    const badgeClass = (st==="APPROVED"||st==="GRANTED") ? "bg-success"
+                                      : (st==="PENDING") ? "bg-warning text-dark"
+                                      : (st==="DENIED") ? "bg-danger"
+                                      : (st==="CANCELLED"||st==="REVOKED") ? "bg-secondary"
+                                      : "bg-secondary";
+
+                    const aidQ = jsQuote(aid);
+                    const isPending = st === "PENDING";
+                    const isReopenable = (st === "DENIED" || st === "CANCELLED" || st === "REVOKED");
+                    const isApproved = (st === "APPROVED" || st === "GRANTED");
+
+                    const btns = [];
+                    if (isApproved) btns.push(`<button class="btn btn-sm btn-outline-success" onclick="downloadAsset('${aidQ}')">Download</button>`);
+                    if (isPending) btns.push(`<button class="btn btn-sm btn-outline-danger" onclick="cancelMyRequest('${aidQ}')">Cancel</button>`);
+                    if (isReopenable) btns.push(`<button class="btn btn-sm btn-outline-primary" onclick="reopenMyRequest('${aidQ}')">Reopen</button>`);
+                    btns.push(`<button class="btn btn-sm btn-outline-secondary" onclick="openAssetDrawer('${aidQ}')">Open</button>`);
+
+                    return `<tr>
+                      <td><code>${escapeHtml(aid)}</code></td>
+                      <td><span class="badge ${badgeClass}">${escapeHtml(st)}</span></td>
+                      <td class="text-muted small">${escapeHtml(humanizeErrorText(reason))}</td>
+                      <td class="text-muted small">${escapeHtml(updated)}</td>
+                      <td><div class="d-flex flex-wrap gap-1">${btns.join("")}</div></td>
+                    </tr>`;
+                }).join("");
+            }
+        }
+    } catch (e) {
+        const raw = (e && e.message) ? e.message : String(e);
+        if (/RegisterUser first/i.test(raw)) {
+            if (outMine) outMine.innerHTML = `<tr><td colspan="5" class="text-center p-3">
+                <div class="text-muted mb-2">Profile is not registered on-ledger.</div>
+                <button class="btn btn-sm btn-outline-success" onclick="showSettingsTab()"><i class="bi bi-person-plus"></i> Open Settings</button>
+            </td></tr>`;
+        } else {
+            if (outMine) outMine.innerHTML = `<tr><td colspan="5" class="text-danger text-center p-3">${escapeHtml(humanizeErrorText(raw))}</td></tr>`;
+        }
+    }
+
+    // Inbox (pending requests for my assets)
+    try {
+        let reqs = await agentEval("GetPendingRequests", []);
+        if (!Array.isArray(reqs)) reqs = [];
+        if (!outInbox) return;
+        if (reqs.length === 0) {
+            outInbox.innerHTML = `<tr><td colspan="5" class="text-muted text-center">No pending requests.</td></tr>`;
+            return;
+        }
+
+        const rows = reqs.map(r => {
+            const aid = (r.assetID || r.AssetID || "").toString();
+            const requesterID = r.requesterID || r.RequesterID || "";
+            const requesterName = r.requester || r.Requester || (requesterID ? requesterID.substring(0, 12) + "…" : "unknown");
+            const rReason = (r.Reason || r.reason || "").toString();
+            const rUpdated = (r.UpdatedAt || r.updatedAt || r.Timestamp || r.timestamp || r.CreatedAt || r.createdAt || "").toString();
+            const ridQ = jsQuote(requesterID);
+            const aidQ2 = jsQuote(aid);
+
+            return `<tr>
+              <td><code>${escapeHtml(aid)}</code></td>
+              <td>
+                <div><b>${escapeHtml(requesterName)}</b></div>
+                <div class="text-muted small"><code>${escapeHtml(requesterID)}</code></div>
+              </td>
+              <td class="text-muted small">${escapeHtml(rReason || "—")}</td>
+              <td class="text-muted small">${escapeHtml(rUpdated || "—")}</td>
+              <td>
+                <div class="d-flex flex-wrap gap-1">
+                  <button class="btn btn-sm btn-success" onclick="grantAccess('${aidQ2}','${ridQ}')">Grant</button>
+                  <button class="btn btn-sm btn-outline-danger" onclick="denyAccessUI('${aidQ2}','${ridQ}')">Deny</button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="openAssetDrawer('${aidQ2}')">Open</button>
+                </div>
+              </td>
+            </tr>`;
+        }).join("");
+
+        outInbox.innerHTML = rows;
+    } catch (e) {
+        const raw = (e && e.message) ? e.message : String(e);
+        if (/RegisterUser first/i.test(raw)) {
+            if (outInbox) outInbox.innerHTML = `<tr><td colspan="5" class="text-center p-3">
+                <div class="text-muted mb-2">Profile is not registered on-ledger.</div>
+                <button class="btn btn-sm btn-outline-success" onclick="showSettingsTab()"><i class="bi bi-person-plus"></i> Open Settings</button>
+            </td></tr>`;
+        } else {
+            if (outInbox) outInbox.innerHTML = `<tr><td colspan="5" class="text-danger text-center p-2">${escapeHtml(humanizeErrorText(raw))}</td></tr>`;
+        }
+    }
+}
+
+async function loadActivityView() {
+    const okTok = await ensureAgentToken(false);
+    if (!okTok) return;
+
+    const out = document.getElementById("activityOut");
+    const outDl = document.getElementById("downloadsOut");
+    if (out) out.innerHTML = `<div class="text-muted">Loading…</div>`;
+    if (outDl) outDl.innerHTML = `<div class="text-muted">Loading…</div>`;
+
+    // default actor = me
+    let me = UI_STATE.meClientID;
+    if (!me) {
+        try {
+            const who = await agentEval("WhoAmI", []);
+            me = who.clientID || who.clientId || "";
+        } catch {}
+    }
+    const actorInput = document.getElementById("activityActorId");
+    if (actorInput && !actorInput.value) actorInput.value = me || "";
+
+    const actor = (actorInput?.value || me || "").trim();
+    const typeInput = document.getElementById("activityEventType");
+    const eventType = (typeInput?.value || "").trim();
+
+    // Audit events by actor or by type (SecurityService only)
+    try {
+      let res;
+      if (eventType) {
+        if (!(IDENTITY && IDENTITY.role === "SecurityService")) {
+          throw new Error("Only SecurityService can query audit events by type");
+        }
+        res = await agentEval("QueryAuditEventsByType", [eventType]);
+      } else {
+        res = await agentEval("QueryAuditEventsByUser", [actor]);
+      }
+        const items = (res && (res.items || res.Items)) ? (res.items || res.Items) : [];
+        out.innerHTML = renderActivityList(items, "audit");
+    } catch (e) {
+        out.innerHTML = `<div class="text-warning">Audit query failed: ${escapeHtml(e.message || e)}</div>`;
+    }
+
+    // Download audits by user
+    const userInput = document.getElementById("downloadsUserId");
+    if (userInput && !userInput.value) userInput.value = actor || "";
+    const u = (userInput?.value || actor || "").trim();
+
+    try {
+        const res = await agentEval("QueryDownloadAuditsByUser", [u]);
+        const items = (res && (res.items || res.Items)) ? (res.items || res.Items) : [];
+        outDl.innerHTML = renderActivityList(items, "download");
+    } catch (e) {
+        outDl.innerHTML = `<div class="text-warning">Download audit query failed: ${escapeHtml(e.message || e)}</div>`;
+    }
+}
+
+function renderActivityList(items, kind) {
+    if (!Array.isArray(items) || items.length === 0) {
+        return `<div class="text-muted">No records.</div>`;
+    }
+    const sorted = items.slice().sort((a,b) => String(b.timestamp || b.Timestamp || "").localeCompare(String(a.timestamp || a.Timestamp || "")));
+    let html = `<div class="list-group">`;
+    for (const it of sorted) {
+        const ts = it.timestamp || it.Timestamp || "";
+        const tx = it.txID || it.TxID || "";
+        if (kind === "download") {
+            const actor = it.actorID || it.ActorID || "";
+            const aid = it.assetID || it.AssetID || "";
+            html += `<div class="list-group-item">
+              <div class="d-flex justify-content-between">
+                <div><b>DOWNLOAD</b> <code>${escapeHtml(aid)}</code></div>
+                <div class="text-muted small">${escapeHtml(ts)}</div>
+              </div>
+              <div class="text-muted small">actor: <code>${escapeHtml(actor)}</code></div>
+              ${tx ? `<div class="text-muted small">tx: <code>${escapeHtml(tx)}</code></div>` : ``}
+            </div>`;
+        } else {
+            const typ = it.eventType || it.EventType || "EVENT";
+            const actor = it.actorID || it.ActorID || "";
+            const aid = it.assetID || it.AssetID || "";
+            const detail = it.detail || it.Detail || "";
+            html += `<div class="list-group-item">
+              <div class="d-flex justify-content-between">
+                <div><b>${escapeHtml(typ)}</b> ${aid ? `<code>${escapeHtml(aid)}</code>` : ""}</div>
+                <div class="text-muted small">${escapeHtml(ts)}</div>
+              </div>
+              <div class="text-muted small">actor: <code>${escapeHtml(actor)}</code></div>
+              ${detail ? `<div class="small mt-1">${escapeHtml(detail)}</div>` : ``}
+              ${tx ? `<div class="text-muted small mt-1">tx: <code>${escapeHtml(tx)}</code></div>` : ``}
+            </div>`;
+        }
+    }
+    html += `</div>`;
+    return html;
+}
+
+// Init
+    (async () => {
+        try {
+            // restore last used agent profile
+            setActiveProfile(getActiveProfile());
+            hookTabs();
+            await checkHealthAll();
+            const okTok = await ensureAgentToken(false);
+            if (okTok) {
+                await ensureRsaReady();
+                await refreshIdentity();
+                loadFiles();
+              loadDashboard(true);
+            } else {
+                await refreshIdentity();
+              loadDashboard(true);
+            }
+        } catch (e) {
+            console.error(e);
+            log("❌ Init error: " + e.message);
+        }
+    })();
+
+
+
+/* =========================
+   Dashboard / Setup Wizard
+   ========================= */
+
+function showMainTab(paneId) {
+    const btn = document.querySelector(`button[data-bs-target="${paneId}"]`);
+    if (!btn) return;
+    try { new bootstrap.Tab(btn).show(); } catch {}
+    try { btn.scrollIntoView({block:"nearest"}); } catch {}
+}
+
+function _badge(elId, tone, text, title="") {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.className = `badge bg-${tone}`;
+    el.textContent = text;
+    if (title) el.title = title;
+}
+
+function _setText(elId, text) {
+    const el = document.getElementById(elId);
+    if (el) el.textContent = text;
+}
+
+
+function _normalizeArgs(args) {
+    return (args || []).map(a => (a === null || a === undefined) ? "" : String(a));
+}
+
+
+async function agentEvalAs(profile, fn, args=[]) {
+    const base = AGENTS[profile];
+    if (!base) throw new Error("Unknown agent profile: " + profile);
+    const token = (localStorage.getItem(profileKeyToken(profile)) || "").trim();
+    if (!token) throw new Error("No token set for " + profile);
+
+    const resp = await fetch(base + "/eval", {
+        method: "POST",
+        headers: {
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({function: fn, args: _normalizeArgs(args)})
+    });
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok) {
+        const msg = (data && data.error) ? data.error : ("HTTP " + resp.status);
+        throw new Error(msg);
+    }
+    if (!data || data.ok !== true) {
+        throw new Error((data && data.error) ? data.error : "Unexpected response");
+    }
+    return (data.result !== undefined) ? data.result : (data.text !== undefined ? data.text : null);
+}
+
+async function agentSubmitAs(profile, fn, args=[]) {
+    const base = AGENTS[profile];
+    if (!base) throw new Error("Unknown agent profile: " + profile);
+    const token = (localStorage.getItem(profileKeyToken(profile)) || "").trim();
+    if (!token) throw new Error("No token set for " + profile);
+
+    const resp = await fetch(base + "/submit", {
+        method: "POST",
+        headers: {
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({function: fn, args: _normalizeArgs(args)})
+    });
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok) {
+        const msg = (data && data.error) ? data.error : ("HTTP " + resp.status);
+        throw new Error(msg);
+    }
+    if (!data || data.ok !== true) {
+        throw new Error((data && data.error) ? data.error : "Unexpected response");
+    }
+    return (data.result !== undefined) ? data.result : (data.text !== undefined ? data.text : null);
+}
+
+async function dashCheckAgents() {
+    const parts = [];
+    for (const p of Object.keys(AGENTS)) {
+        const hasTok = !!(localStorage.getItem(profileKeyToken(p)) || "").trim();
+        try {
+            const r = await fetch(AGENTS[p] + "/health");
+            const ok = r.ok;
+            const tone = ok ? (hasTok ? "success" : "warning") : "danger";
+            parts.push(`<span class="badge bg-${tone} me-2" title="${escapeHtml(ok ? "health ok" : ("HTTP "+r.status))}">${escapeHtml(p)} · ${ok ? "UP" : "DOWN"}${hasTok ? "" : " · no token"}</span>`);
+        } catch (e) {
+            const tone = hasTok ? "danger" : "danger";
+            parts.push(`<span class="badge bg-${tone} me-2" title="${escapeHtml(e.message || "error")}">${escapeHtml(p)} · DOWN${hasTok ? "" : " · no token"}</span>`);
+        }
+    }
+    const row = document.getElementById("dashAgentBadges");
+    if (row) row.innerHTML = parts.join("");
+}
+
+async function dashCheckBackend() {
+    try {
+        const r = await fetch(API_URL + "/health");
+        const t = await r.text();
+        if (r.ok) {
+            _badge("dashBackendBadge", "success", "UP", "backend health ok");
+            _setText("dashBackendDetail", t.slice(0,120));
+        } else {
+            _badge("dashBackendBadge", "danger", "DOWN", "HTTP " + r.status);
+            _setText("dashBackendDetail", t.slice(0,120));
+        }
+    } catch (e) {
+        _badge("dashBackendBadge", "danger", "DOWN", e.message || "error");
+        _setText("dashBackendDetail", e.message || "error");
+    }
+}
+
+async function dashCheckIpfs() {
+    // Browser CORS may block reading IPFS API response even when IPFS is running.
+    const url = "http://127.0.0.1:5001/api/v0/version";
+    try {
+        const r = await fetch(url, { method: "POST" });
+        const txt = await r.text();
+        if (!r.ok) {
+            _badge("dashIpfsBadge", "danger", "DOWN", "HTTP " + r.status);
+            _setText("dashIpfsDetail", txt.slice(0,160));
+            return;
+        }
+        _badge("dashIpfsBadge", "success", "UP", "ipfs ok");
+        _setText("dashIpfsDetail", txt.slice(0,160));
+        return;
+    } catch (e) {
+        // Fallback: try no-cors (opaque response) — can't read body, but if it resolves, IPFS is reachable.
+        try {
+            const r2 = await fetch(url, { method: "POST", mode: "no-cors" });
+            // If we got here — request was sent. Response is opaque, so we can't inspect status/body.
+            _badge("dashIpfsBadge", "success", "UP", "CORS ограничил чтение ответа");
+            _setText("dashIpfsDetail", "IPFS API reachable, but browser blocked reading response (opaque). This is OK for local setup.");
+            return;
+        } catch (e2) {
+            _badge("dashIpfsBadge", "warning", "CHECK", "Failed to reach from browser");
+            _setText("dashIpfsDetail", (e2 && e2.message) ? e2.message : ((e && e.message) ? e.message : "Unable to reach IPFS"));
+        }
+    }
+}
+
+async function dashCheckRegistration() {
+    const btn = document.getElementById("btnDashRegister");
+    if (btn) btn.style.display = "none";
+    try {
+        if (!getAgentToken()) {
+            _badge("dashRegBadge", "warning", "NEED TOKEN", "Set token for this agent first");
+            _setText("dashRegDetail", "Token missing for active profile");
+            return;
+        }
+        // Ensure IDENTITY is ready
+        if (!IDENTITY || !IDENTITY.clientID) {
+            await refreshIdentity();
+        }
+        const uid = (IDENTITY && IDENTITY.clientID) ? IDENTITY.clientID : "";
+        if (!uid) throw new Error("No clientID");
+        await agentEval("GetUserProfile", [uid]);
+        _badge("dashRegBadge", "success", "REGISTERED");
+        _setText("dashRegDetail", "On-chain profile exists");
+    } catch (e) {
+        const msg = (e && e.message) ? e.message : "not registered";
+        const looksLikeNotFound = /user not found|RegisterUser first|not found/i.test(msg);
+        if (looksLikeNotFound) {
+            _badge("dashRegBadge", "danger", "NOT REGISTERED");
+            _setText("dashRegDetail", "Call RegisterUser for this profile");
+            if (btn) btn.style.display = "";
+        } else {
+            _badge("dashRegBadge", "warning", "CHECK");
+            _setText("dashRegDetail", msg);
+            if (btn) btn.style.display = "";
+        }
+    }
+}
+
+async function dashCheckMlBinding() {
+    const btn = document.getElementById("btnDashBindMl");
+    if (btn) btn.style.display = "none";
+    try {
+        // We check binding by calling a function that requires the bound ML identity.
+        const hasMlTok = !!(localStorage.getItem(profileKeyToken("MLService")) || "").trim();
+        if (!hasMlTok) {
+            _badge("dashMlBadge", "warning", "NEED TOKEN", "Set MLService token to verify binding");
+            _setText("dashMlDetail", "Token missing for MLService");
+            if (IDENTITY && IDENTITY.role === "SecurityService" && btn) btn.style.display = "";
+            return;
+        }
+        try {
+            await agentEvalAs("MLService", "AddSuggestedCategory", ["__wizard__", "Public", "0"]);
+            // If it succeeds somehow, still ok.
+            _badge("dashMlBadge", "success", "OK");
+            _setText("dashMlDetail", "Bound (call succeeded)");
+        } catch (e) {
+            const msg = (e && e.message) ? e.message : "";
+            if (/asset not found/i.test(msg)) {
+                _badge("dashMlBadge", "success", "OK");
+                _setText("dashMlDetail", "Bound (checked via AddSuggestedCategory → asset not found)");
+                return;
+            }
+            if (/service MLService is not bound/i.test(msg)) {
+                _badge("dashMlBadge", "danger", "NOT BOUND");
+                _setText("dashMlDetail", msg);
+                if (IDENTITY && IDENTITY.role === "SecurityService" && btn) btn.style.display = "";
+                return;
+            }
+            if (/caller is not bound/i.test(msg)) {
+                _badge("dashMlBadge", "danger", "MISMATCH");
+                _setText("dashMlDetail", msg);
+                if (IDENTITY && IDENTITY.role === "SecurityService" && btn) btn.style.display = "";
+                return;
+            }
+            _badge("dashMlBadge", "warning", "CHECK");
+            _setText("dashMlDetail", msg || "Unknown error");
+            if (IDENTITY && IDENTITY.role === "SecurityService" && btn) btn.style.display = "";
+        }
+    } catch (e) {
+        _badge("dashMlBadge", "warning", "CHECK");
+        _setText("dashMlDetail", (e && e.message) ? e.message : "error");
+        if (IDENTITY && IDENTITY.role === "SecurityService" && btn) btn.style.display = "";
+    }
+}
+
+async function dashRegisterCurrentUser() {
+    try {
+        if (!getAgentToken()) throw new Error("Token missing for active profile");
+        const pub = await fetch(agentBase() + "/rsa/publicKey").then(r => r.text());
+        await agentSubmit("RegisterUser", [CURRENT_USER, pub, "", ""]);
+        log("✅ Dashboard: RegisterUser submitted for " + CURRENT_USER);
+        await refreshIdentity();
+        await runSetupChecklist();
+        showMainTab("#pane-assets");
+    } catch (e) {
+        log("❌ Dashboard Register error: " + (e && e.message ? e.message : e));
+        alert("Register failed: " + (e && e.message ? e.message : e));
+    }
+}
+
+async function dashBindMLService() {
+    try {
+        if (!(IDENTITY && IDENTITY.role === "SecurityService")) throw new Error("Only SecurityService can bind MLService");
+        const mlWho = await agentEvalAs("MLService", "WhoAmI", []);
+        const mlClientId = (mlWho && mlWho.clientID) ? mlWho.clientID : "";
+        if (!mlClientId) throw new Error("Unable to read MLService clientID (WhoAmI)");
+        await agentSubmit("BindServiceIdentity", ["MLService", mlClientId]);
+        log("✅ Dashboard: Bound MLService to " + mlClientId);
+        await runSetupChecklist();
+        showMainTab("#pane-security");
+    } catch (e) {
+        log("❌ Dashboard Bind error: " + (e && e.message ? e.message : e));
+        alert("Bind failed: " + (e && e.message ? e.message : e));
+    }
+}
+
+function renderDashRoleCards() {
+    const box = document.getElementById("dashRoleGuide");
+    if (!box) return;
+
+    const role = (IDENTITY && IDENTITY.role) ? IDENTITY.role.trim() : "";
+    const hasTok = !!getAgentToken();
+
+    const cards = [];
+    if (!hasTok) {
+        cards.push(`
+          <div class="alert alert-warning mb-0">
+            <div class="fw-semibold"><i class="bi bi-key"></i> Token required</div>
+            <div class="small">Set token for the active profile to enable chaincode calls.</div>
+          </div>
+        `);
+        box.innerHTML = cards.join("");
+        return;
+    }
+
+    if (role === "SecurityService") {
+        cards.push(`
+          <div class="border rounded-3 p-3">
+            <div class="fw-semibold mb-2"><i class="bi bi-shield-lock"></i> Security workflow</div>
+            <div class="small text-muted mb-2">Review alerts, investigate evidence, and enforce policy.</div>
+            <div class="d-flex flex-wrap gap-2">
+              <button class="btn btn-sm btn-danger" onclick="showMainTab('#pane-security')"><i class="bi bi-shield-lock"></i> Open Security</button>
+              <button class="btn btn-sm btn-outline-danger" onclick="loadRiskDashboard()"><i class="bi bi-activity"></i> Refresh risk</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="showMainTab('#pane-activity')"><i class="bi bi-clock-history"></i> Audit logs</button>
+            </div>
+            <div class="small text-muted mt-2">Tip: use Evidence trail to justify block/unblock decisions.</div>
+          </div>
+        `);
+    } else {
+        cards.push(`
+          <div class="border rounded-3 p-3 mb-2">
+            <div class="fw-semibold mb-2"><i class="bi bi-cloud-arrow-up"></i> Upload flow</div>
+            <div class="small text-muted mb-2">Upload → AI suggestion → approve category → share access.</div>
+            <div class="d-flex flex-wrap gap-2">
+              <button class="btn btn-sm btn-outline-success" onclick="showMainTab('#pane-assets')"><i class="bi bi-plus-circle"></i> Upload file</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="setAssetsFilter('needs_review')"><i class="bi bi-check2-square"></i> Review approvals</button>
+            </div>
+          </div>
+          <div class="border rounded-3 p-3">
+            <div class="fw-semibold mb-2"><i class="bi bi-unlock"></i> Access flow</div>
+            <div class="small text-muted mb-2">Request access → owner approves → download.</div>
+            <div class="d-flex flex-wrap gap-2">
+              <button class="btn btn-sm btn-outline-primary" onclick="showMainTab('#pane-requests')"><i class="bi bi-inbox"></i> My requests</button>
+              <button class="btn btn-sm btn-outline-dark" onclick="setAssetsFilter('available')"><i class="bi bi-download"></i> Available to me</button>
+            </div>
+          </div>
+        `);
+    }
+
+    box.innerHTML = cards.join("");
+}
+
+function updateDashboardIdentity() {
+    _setText("dashProfileName", CURRENT_USER || "—");
+    _setText("dashClientId", (IDENTITY && IDENTITY.clientID) ? IDENTITY.clientID : "—");
+    _setText("dashMspId", (IDENTITY && IDENTITY.mspID) ? IDENTITY.mspID : "—");
+    _setText("dashRole", (IDENTITY && IDENTITY.role) ? IDENTITY.role : "—");
+    _setText("dashDept", (IDENTITY && IDENTITY.department) ? IDENTITY.department : "—");
+    renderDashRoleCards();
+}
+
+async function fetchSecurityAlerts() {
+  const types = ["USER_BLOCKED", "ACCESS_REQUEST_DENIED", "ACCESS_DENIED", "KEY_REQUEST_DENIED"];
+  const all = [];
+  for (const t of types) {
+    try {
+      const res = await agentEval("QueryAuditEventsByType", [t]);
+      const items = (res && (res.items || res.Items)) ? (res.items || res.Items) : [];
+      for (const it of items) all.push(it);
+    } catch (e) {
+      // ignore individual type errors
+    }
+  }
+  return all;
+}
+
+function normalizeAuditItem(it) {
+  return {
+    eventType: it.eventType || it.EventType || "EVENT",
+    timestamp: it.timestamp || it.Timestamp || "",
+    actorID: it.actorID || it.ActorID || "",
+    targetUserID: it.targetUserID || it.TargetUserID || "",
+    assetID: it.assetID || it.AssetID || "",
+    detail: it.detail || it.Detail || "",
+  };
+}
+
+function renderDashboardEvents(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return `<div class="text-muted">No recent events.</div>`;
+  }
+  const sorted = items.slice().sort((a,b) => String(b.timestamp || b.Timestamp || "").localeCompare(String(a.timestamp || a.Timestamp || "")));
+  const top = sorted.slice(0, 10).map(raw => {
+    const it = normalizeAuditItem(raw);
+    return `<div class="list-group-item">
+      <div class="d-flex justify-content-between">
+      <div><b>${escapeHtml(it.eventType)}</b> ${it.assetID ? `<code>${escapeHtml(it.assetID)}</code>` : ""}</div>
+      <div class="text-muted small">${escapeHtml(it.timestamp || "—")}</div>
+      </div>
+      <div class="text-muted small">actor: <code>${escapeHtml(it.actorID || "—")}</code></div>
+      ${it.targetUserID ? `<div class="text-muted small">target: <code>${escapeHtml(it.targetUserID)}</code></div>` : ""}
+      ${it.detail ? `<div class="small mt-1">${escapeHtml(it.detail)}</div>` : ""}
+    </div>`;
+  }).join("");
+  return `<div class="list-group list-tight">${top}</div>`;
+}
+
+async function loadDashboard(force = false) {
+  updateDashboardIdentity();
+
+  const out = document.getElementById("dashRecentEvents");
+  if (!out) return;
+  if (!getAgentToken()) {
+    out.innerHTML = `<div class="text-muted">Set token to load dashboard events.</div>`;
+    return;
+  }
+
+  out.innerHTML = `<div class="text-muted">Loading…</div>`;
+  try {
+    let items = [];
+    if (IDENTITY && IDENTITY.role === "SecurityService") {
+      items = await fetchSecurityAlerts();
+      try { await loadRiskDashboard(); } catch {}
+    } else {
+      let me = (IDENTITY && IDENTITY.clientID) ? IDENTITY.clientID : "";
+      if (!me) {
+        const who = await agentEval("WhoAmI", []);
+        me = who.clientID || who.clientId || "";
+      }
+      const res = await agentEval("QueryAuditEventsByUser", [me]);
+      items = (res && (res.items || res.Items)) ? (res.items || res.Items) : [];
+    }
+    out.innerHTML = renderDashboardEvents(items);
+  } catch (e) {
+    out.innerHTML = `<div class="text-warning">${escapeHtml(e.message || e)}</div>`;
+  }
+}
+
+async function loadRiskDashboard() {
+  if (!(IDENTITY && IDENTITY.role === "SecurityService")) return;
+  if (!getAgentToken()) {
+    const msg = "Set token for SecurityService to load risk data.";
+    const topEl = document.getElementById("riskTopUsers");
+    const alertEl = document.getElementById("riskAlerts");
+    const blockedEl = document.getElementById("riskBlockedUsers");
+    if (topEl) topEl.textContent = msg;
+    if (alertEl) alertEl.textContent = msg;
+    if (blockedEl) blockedEl.textContent = msg;
+    return;
+  }
+  const topEl = document.getElementById("riskTopUsers");
+  const alertEl = document.getElementById("riskAlerts");
+  const blockedEl = document.getElementById("riskBlockedUsers");
+  if (topEl) topEl.textContent = "Loading…";
+  if (alertEl) alertEl.textContent = "Loading…";
+  if (blockedEl) blockedEl.textContent = "Loading…";
+
+  let alertItems = [];
+  try {
+    alertItems = await fetchSecurityAlerts();
+  } catch (e) {
+    if (alertEl) alertEl.innerHTML = `<div class="text-warning">${escapeHtml(e.message || e)}</div>`;
+  }
+
+  const normalized = alertItems.map(normalizeAuditItem);
+  const recent = normalized.slice().sort((a,b) => String(b.timestamp).localeCompare(String(a.timestamp))).slice(0, 8);
+  if (alertEl) {
+    alertEl.innerHTML = recent.length
+      ? `<div class="list-group list-tight">${recent.map(it => `
+        <div class="list-group-item">
+          <div class="d-flex justify-content-between">
+          <div><b>${escapeHtml(it.eventType)}</b> ${it.assetID ? `<code>${escapeHtml(it.assetID)}</code>` : ""}</div>
+          <div class="text-muted small">${escapeHtml(it.timestamp || "—")}</div>
+          </div>
+          ${it.targetUserID ? `<div class="text-muted small">target: <code>${escapeHtml(it.targetUserID)}</code></div>` : ""}
+        </div>`).join("")}</div>`
+      : `<div class="text-muted">No recent alerts.</div>`;
+  }
+
+  const counts = {};
+  for (const it of normalized) {
+    const key = (it.targetUserID || it.actorID || "").trim();
+    if (!key) continue;
+    counts[key] = (counts[key] || 0) + 1;
+  }
+  const top = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 6);
+  if (topEl) {
+    topEl.innerHTML = top.length
+      ? `<div class="list-group list-tight">${top.map(([u,c]) => `
+        <div class="list-group-item d-flex justify-content-between">
+          <code>${escapeHtml(u)}</code>
+          <span class="badge bg-danger">${c}</span>
+        </div>`).join("")}</div>`
+      : `<div class="text-muted">No suspicious users yet.</div>`;
+  }
+
+  try {
+    const blocked = await agentEval("ListBlockedUsers", []);
+    const list = Array.isArray(blocked) ? blocked : [];
+    if (blockedEl) {
+      blockedEl.innerHTML = list.length
+        ? `<div class="list-group list-tight">${list.slice(0, 8).map(u => `
+          <div class="list-group-item">
+            <div><b>${escapeHtml(u.username || u.Username || u.userID || u.UserID || "user")}</b></div>
+            <div class="text-muted small"><code>${escapeHtml(u.userID || u.UserID || "")}</code></div>
+            ${u.blockReason ? `<div class="text-muted small">${escapeHtml(u.blockReason)}</div>` : ""}
+          </div>`).join("")}</div>`
+        : `<div class="text-muted">No blocked users.</div>`;
+    }
+    setEl("kpiBlocked", list.length);
+  } catch (e) {
+    if (blockedEl) blockedEl.innerHTML = `<div class="text-warning">${escapeHtml(e.message || e)}</div>`;
+  }
+
+  setEl("kpiDenied", recent.length);
+}
+
+async function loadEvidenceTrail() {
+  const userId = (document.getElementById("riskEvidenceUserId")?.value || "").trim();
+  if (!userId) {
+    await uiAlert({title:"Evidence trail", body:"Enter a clientID to investigate.", tone:"warning"});
+    return;
+  }
+  const out = document.getElementById("riskEvidenceOut");
+  if (out) out.innerHTML = `<div class="text-muted">Loading…</div>`;
+
+  try {
+    const res = await agentEval("QueryAuditEventsByTargetUser", [userId]);
+    const items = (res && (res.items || res.Items)) ? (res.items || res.Items) : [];
+    const dls = await agentEval("QueryDownloadAuditsByUser", [userId]);
+    const dlItems = (dls && (dls.items || dls.Items)) ? (dls.items || dls.Items) : [];
+
+    let html = "";
+    if (items.length === 0 && dlItems.length === 0) {
+      html = `<div class="text-muted">No evidence found for this user.</div>`;
+    } else {
+      const auditHtml = items.length
+        ? `<div class="list-group list-tight mb-2">${items.slice(0, 10).map(raw => {
+          const it = normalizeAuditItem(raw);
+          return `<div class="list-group-item">
+            <div class="d-flex justify-content-between">
+            <div><b>${escapeHtml(it.eventType)}</b> ${it.assetID ? `<code>${escapeHtml(it.assetID)}</code>` : ""}</div>
+            <div class="text-muted small">${escapeHtml(it.timestamp || "—")}</div>
+            </div>
+            ${it.detail ? `<div class="small">${escapeHtml(it.detail)}</div>` : ""}
+          </div>`;
+        }).join("")}</div>`
+        : `<div class="text-muted">No audit events.</div>`;
+
+      const dlHtml = dlItems.length
+        ? `<div class="list-group list-tight">${dlItems.slice(0, 10).map(it => {
+          const ts = it.timestamp || it.Timestamp || "";
+          const aid = it.assetID || it.AssetID || "";
+          return `<div class="list-group-item">
+            <div class="d-flex justify-content-between">
+            <div><b>DOWNLOAD</b> ${aid ? `<code>${escapeHtml(aid)}</code>` : ""}</div>
+            <div class="text-muted small">${escapeHtml(ts || "—")}</div>
+            </div>
+          </div>`;
+        }).join("")}</div>`
+        : `<div class="text-muted">No downloads.</div>`;
+
+      html = `<div class="fw-semibold mb-1">Audit events</div>${auditHtml}
+          <div class="fw-semibold mt-3 mb-1">Downloads</div>${dlHtml}`;
+    }
+    if (out) out.innerHTML = html;
+  } catch (e) {
+    if (out) out.innerHTML = `<div class="text-warning">${escapeHtml(e.message || e)}</div>`;
+  }
+}
+
+async function runSetupChecklist() {
+    await dashCheckAgents();
+    await dashCheckBackend();
+    await dashCheckIpfs();
+    await dashCheckRegistration();
+    await dashCheckMlBinding();
+}
+
+function initSetupChecklistUI() {
+  const btnRefresh = document.getElementById("btnDashRefresh");
+  if (btnRefresh) btnRefresh.addEventListener("click", runSetupChecklist);
+  const btnTokens = document.getElementById("btnDashOpenTokens");
+  if (btnTokens) btnTokens.addEventListener("click", openConnectionsModal);
+  const btnReg = document.getElementById("btnDashRegister");
+  if (btnReg) btnReg.addEventListener("click", dashRegisterCurrentUser);
+  const btnBind = document.getElementById("btnDashBindMl");
+  if (btnBind) btnBind.addEventListener("click", dashBindMLService);
+  const aInp = document.getElementById("assetSearchInput");
+  if (aInp) aInp.addEventListener("input", applyAssetSearchFilter);
+  const aSel = document.getElementById("assetFilterSelect");
+  if (aSel) aSel.addEventListener("change", applyAssetSearchFilter);
+  const aClr = document.getElementById("assetSearchClear");
+  if (aClr) aClr.addEventListener("click", () => { if (aInp) aInp.value=""; applyAssetSearchFilter(); });
+}
+
+// Run after existing init finishes.
+setTimeout(() => { try { initSetupChecklistUI(); } catch(e) { console.error(e); } }, 0);
+
+</script>
+
+</body>
+</html>
