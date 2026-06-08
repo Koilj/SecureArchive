@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recovery Harness</title>
+</head>
+<body>
+  <div id="loginScreen"></div>
+  <div id="sessionBar"></div>
+  <div id="mainApp"></div>
+  <input id="recoveryBundleFileInput" type="file">
+  <script>
+    window.fetch = async function () {
+      return {
+        ok: false,
+        status: 401,
+        json: async () => ({}),
+        text: async () => ""
+      };
+    };
+    window.bootstrap = {
+      Modal: {
+        getOrCreateInstance() {
+          return { show() {}, hide() {} };
+        }
+      },
+      Toast: {
+        getOrCreateInstance() {
+          return { show() {} };
+        }
+      },
+      Tab: function () {
+        return { show() {} };
+      },
+      Offcanvas: {
+        getOrCreateInstance() {
+          return { show() {}, hide() {} };
+        }
+      }
+    };
+    window.CryptoJS = {};
+    window.JSEncrypt = function () {};
+    window.argon2 = {
+      ArgonType: { Argon2id: 2 },
+      hash: async function ({ pass, salt, hashLen }) {
+        const encoder = new TextEncoder();
+        const passBytes = encoder.encode(String(pass || ""));
+        const saltBytes = salt instanceof Uint8Array ? salt : new Uint8Array(salt || []);
+        const merged = new Uint8Array(passBytes.length + saltBytes.length);
+        merged.set(passBytes);
+        merged.set(saltBytes, passBytes.length);
+        let digest = new Uint8Array(await crypto.subtle.digest("SHA-256", merged));
+        if (digest.length > hashLen) digest = digest.slice(0, hashLen);
+        return { hash: digest };
+      }
+    };
+  </script>
+  <script src="/frontend/app/01-core.js"></script>
+  <script src="/frontend/app/02-assets-crypto.js"></script>
+  <script src="/frontend/app/03-recovery-log.js"></script>
+  <script src="/frontend/app/04-identity-drawer.js"></script>
+  <script src="/frontend/app/05-files-actions.js"></script>
+  <script src="/frontend/app/06-dashboard.js"></script>
+</body>
+</html>

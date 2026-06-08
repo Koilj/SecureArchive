@@ -1,0 +1,498 @@
+# SecureData Archive Mermaid Architecture
+
+These diagrams describe the current codebase, not an idealized version. Key facts reflected here:
+
+- Browser owns the user private keys: WebAuthn passkey, ECDH data-decryption key, and ECDSA Fabric-signing key.
+- `server.py` verifies auth, sanitizes metadata, talks to AI/IPFS/Fabric CA, and orchestrates Fabric signing flows, but does not hold user private keys.
+- User Fabric transactions use offline signing: backend prepares proposal/transaction bytes, browser signs locally, backend submits signed bytes through the Go helper.
+- Service transactions use the unified Go HTTP agent on `:8090` with `AGENT_TOKEN`; `X-Agent-Role` selects `SecurityService`, `MLService`, or `RiskService`.
+- Chaincode forces new assets to `Unverified`; AI suggestions remain advisory until owner approval.
+
+## Main Diagram
+
+```mermaid
+flowchart TB
+    User["User / SecurityService / Researcher"]
+
+    subgraph Browser["Browser on http://localhost:8000"]
+        UI["Static UI<br/>index.html + frontend/app/*.js"]
+        WebAuthn["WebAuthn passkey<br/>authenticator private key"]
+        LocalKeys["IndexedDB local key store<br/>ECDH data key + ECDSA Fabric key"]
+        ClientCrypto["WebCrypto / CryptoJS / JSEncrypt<br/>content encryption, key wrapping, signing"]
+        AgentRPC["agentEval / agentSubmit<br/>backend-routed Fabric RPC"]
+    end
+
+    subgraph Backend["Flask backend server.py on :5500"]
+        Auth["Auth/session layer<br/>WebAuthn verify, CSRF, invites, audit"]
+        UploadAPI["/upload<br/>filename, envelope, AAD checks"]
+        DISP["disp_sanitizer<br/>sanitize, score, audit"]
+        FabricProxy["/fabric/eval + /fabric/submit<br/>offline signing state machine"]
+        DownloadAPI["/download/asset/{assetId}<br/>recent key-fetch grant required"]
+        IPFSMon["IPFS replication monitor<br/>status cache + repair loop"]
+        ServiceRelay["Service relay<br/>SecurityService / MLService agent calls"]
+        ProcessMgr["Autostart supervisor<br/>agent-go + optional AI service"]
+        RuntimeSecrets["Runtime secrets<br/>FLASK_SECRET, INVITE_SIGNING_KEY,<br/>SECURITY_AGENT_TOKEN"]
+    end
+
+    subgraph AI["AI service on :8100"]
+        AISvc["FastAPI /predict /predict/batch"]
+        SciBERT["SciBERT multilabel model<br/>tokenizer, encoder, thresholds, categories.json"]
+    end
+
+    subgraph Agent["Go agent on :8090"]
+        UnifiedAgent["serve-unified HTTP agent<br/>Bearer token protected"]
+        OfflineCLI["offline-* CLI modes<br/>prepare, endorse, submit signed bytes"]
+        RiskEngine["Risk engine<br/>subscribes chaincode events"]
+    end
+
+    subgraph Fabric["Hyperledger Fabric test-network"]
+        CA["Fabric CA<br/>register, enroll CSR"]
+        Gateway["Fabric gateway / peers / orderer"]
+        Chaincode["securedata chaincode<br/>assets, users, requests, audit, service binding"]
+        Ledger["World state + composite indexes<br/>assets, profiles, invites, audit, downloads"]
+    end
+
+    subgraph Storage["Encrypted storage"]
+        IPFSA["Kubo node A"]
+        IPFSB["Kubo node B"]
+        RemotePin["Optional PSA remote pinning"]
+    end
+
+    User --> UI
+    UI --> WebAuthn
+    UI --> LocalKeys
+    UI --> ClientCrypto
+    UI --> AgentRPC
+
+    UI -->|credentials include + CSRF| Auth
+    UI -->|encrypted envelope + metadata| UploadAPI
+    AgentRPC -->|POST /fabric/*| FabricProxy
+    UI -->|authorized encrypted download| DownloadAPI
+
+    Auth -->|HMAC invite ticket + session audit| RuntimeSecrets
+    Auth -->|Fabric CA register / enroll CSR| CA
+    Auth -->|SecurityService ledger writes| ServiceRelay
+
+    UploadAPI --> DISP
+    DISP -->|sanitized AI text| AISvc
+    AISvc --> SciBERT
+    ProcessMgr --> UnifiedAgent
+    ProcessMgr -. optional .-> AISvc
+    UploadAPI -->|pin encrypted bytes| IPFSA
+    UploadAPI -->|pin encrypted bytes| IPFSB
+    UploadAPI -.->|best effort| RemotePin
+    IPFSMon --> IPFSA
+    IPFSMon --> IPFSB
+
+    FabricProxy -->|run securedata-agent offline-*| OfflineCLI
+    OfflineCLI --> Gateway
+    ServiceRelay -->|Authorization: Bearer token| UnifiedAgent
+    UnifiedAgent --> Gateway
+    RiskEngine -->|BlockUserForSeconds| Gateway
+
+    Gateway --> Chaincode
+    Chaincode --> Ledger
+    Chaincode -- chaincode events --> RiskEngine
+    DownloadAPI -->|read CID via SecurityService| ServiceRelay
+    DownloadAPI -->|cat encrypted blob| IPFSA
+    DownloadAPI -->|fallback cat| IPFSB
+```
+
+## Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Activating user
+    actor Owner as Owner / researcher
+    actor Requester as Requester
+    participant Browser as Browser UI
+    participant Authn as WebAuthn authenticator
+    participant Backend as Flask backend
+    participant DISP as DISP sanitizer
+    participant AI as AI service
+    participant IPFS as Kubo replicas
+    participant Agent as Go agent / offline helper
+    participant FabricCA as Fabric CA
+    participant Ledger as Chaincode + ledger
+    participant Risk as Risk engine
+
+    rect rgb(245, 248, 255)
+    User->>Browser: Activate device with invite ticket
+    Browser->>Backend: POST /auth/activate/options
+    Backend->>Agent: SecurityService Eval ListEnrollmentInvites
+    Agent->>Ledger: Check pending invite
+    Ledger-->>Agent: Invite is pending
+    Agent-->>Backend: Pending invite record
+    Backend-->>Browser: WebAuthn creation options
+    Browser->>Browser: Generate ECDH data key and ECDSA Fabric key
+    Browser->>Browser: Build Fabric CSR from local ECDSA public key
+    Browser->>Authn: navigator.credentials.create()
+    Authn-->>Browser: Attestation response
+    Browser->>Backend: POST /auth/activate/finish<br/>attestation + data public key + CSR
+    Backend->>Backend: Verify attestation, invite HMAC, RP ID, origin
+    Backend->>FabricCA: Register/enroll CSR with invite secret
+    FabricCA-->>Backend: Fabric certificate
+    Backend->>Agent: SecurityService Submit ActivateEnrollmentInvite
+    Agent->>Ledger: Store user profile, passkey public key,<br/>data public key, Fabric cert
+    Ledger-->>Agent: User activated
+    Agent-->>Backend: Activation result
+    Backend-->>Browser: Session + CSRF token
+    Browser->>Browser: Mandatory recovery bundle gate
+    end
+
+    rect rgb(246, 255, 246)
+    Owner->>Browser: Select file and metadata
+    Browser->>Browser: Generate 32-byte content key
+    Browser->>Browser: SHA-256 fileHash and predicted assetId
+    Browser->>Browser: AES-256-GCM content envelope v2<br/>AAD includes assetId, fileHash, filename, metadataHash
+    Browser->>Browser: Wrap content key for owner<br/>ECDH-P256 + HKDF-SHA256 + AES-GCM
+    Browser->>Backend: POST /upload<br/>encrypted blob + metadata + owner key envelope
+    Backend->>Backend: Validate filename policy and envelope shape
+    Backend->>DISP: sanitize_upload_metadata()
+    DISP-->>Backend: sanitized payload, flags, decision, risk score
+    Backend->>AI: POST /predict with sanitized model text
+    AI-->>Backend: suggested_label + confidence
+    Backend->>Backend: Validate envelope AAD fileHash/assetId
+    Backend->>IPFS: /add?pin=true to each configured node
+    IPFS-->>Backend: CID + replica health
+    Backend-->>Browser: CID, asset_id, sanitized metadata,<br/>DISP decision, AI suggestion
+    Browser->>Backend: POST /fabric/submit CreateAsset
+    Backend->>Agent: offline-prepare-eval using user Fabric cert
+    Agent-->>Backend: proposal sign input
+    Backend-->>Browser: needs_signature proposal
+    Browser->>Browser: Sign proposal with local ECDSA Fabric key
+    Browser->>Backend: flow_id + proposal signature
+    Backend->>Agent: offline-endorse-signed
+    Agent-->>Backend: transaction sign input
+    Backend-->>Browser: needs_signature transaction
+    Browser->>Browser: Sign transaction with local ECDSA Fabric key
+    Browser->>Backend: flow_id + transaction signature
+    Backend->>Agent: offline-submit-signed
+    Agent->>Ledger: CreateAsset
+    Ledger-->>Agent: Asset stored as Unverified + needsManualReview
+    Agent-->>Backend: Submit result
+    Browser->>Backend: POST /ai_suggest_auto with sanitized metadata/result
+    Backend->>Agent: MLService Submit AddSuggestedCategory when actionable
+    Agent->>Ledger: Store advisory AI suggestion
+    end
+
+    rect rgb(255, 250, 240)
+    Owner->>Browser: Approve final category
+    Browser->>Backend: POST /fabric/submit ApproveCategory
+    Backend->>Agent: offline signed proposal + transaction
+    Agent->>Ledger: ApproveCategory
+    Ledger-->>Agent: Category approved, grants now allowed
+    Agent-->>Backend: Submit result
+    Backend-->>Browser: Approval confirmed
+    end
+
+    rect rgb(255, 248, 245)
+    Requester->>Browser: Request access to another user's asset
+    Browser->>Backend: POST /fabric/submit RequestAccessWithReason
+    Backend->>Agent: offline signed submit
+    Agent->>Ledger: ABAC check, block check, create PENDING or DENIED request
+    Ledger-->>Risk: ACCESS_DENIED event when denied
+    Ledger-->>Agent: PENDING or DENIED result
+    Agent-->>Backend: Submit result
+    Backend-->>Browser: Access request status
+
+    Owner->>Browser: Grant access
+    Browser->>Backend: POST /fabric/submit RequestMyEncryptedKey
+    Backend->>Agent: offline signed submit
+    Agent->>Ledger: Return owner's encrypted content key
+    Ledger-->>Risk: ASSET_KEY_FETCHED event
+    Ledger-->>Agent: Owner key envelope
+    Agent-->>Backend: Submit result with owner key envelope
+    Backend-->>Browser: Owner key envelope
+    Browser->>Browser: Unwrap owner content key locally
+    Browser->>Backend: POST /fabric/eval GetUserPublicKey(requester)
+    Backend->>Agent: offline signed eval
+    Agent->>Ledger: Read requester data public key
+    Ledger-->>Agent: Requester data public key
+    Agent-->>Backend: Eval result
+    Backend-->>Browser: Requester data public key
+    Browser->>Browser: Wrap same content key for requester
+    Browser->>Backend: POST /fabric/submit GrantAccess
+    Backend->>Agent: offline signed submit
+    Agent->>Ledger: Store requester key envelope + audit
+    Ledger-->>Agent: Grant recorded
+    Agent-->>Backend: Submit result
+    Backend-->>Browser: Access grant confirmed
+    end
+
+    rect rgb(245, 255, 255)
+    Requester->>Browser: Download asset
+    Browser->>Backend: POST /fabric/submit RequestMyEncryptedKey
+    Backend->>Agent: offline signed submit
+    Agent->>Ledger: Check asset key and return encrypted content key
+    Ledger-->>Risk: ASSET_KEY_FETCHED event
+    Ledger-->>Agent: Recipient key envelope
+    Agent-->>Backend: Submit result with key envelope
+    Backend->>Backend: Record recent download grant in server session
+    Backend-->>Browser: Recipient key envelope
+    Browser->>Browser: Unwrap content key locally
+    Browser->>Backend: POST /download/asset/{assetId}
+    Backend->>Backend: Require recent successful key-fetch grant
+    Backend->>Agent: SecurityService Eval ReadAsset for CID
+    Agent->>Ledger: ReadAsset
+    Ledger-->>Agent: Asset record with CID
+    Agent-->>Backend: ReadAsset result
+    Backend->>IPFS: cat CID from preferred healthy node
+    IPFS-->>Backend: Encrypted content envelope only
+    Backend-->>Browser: Encrypted bytes
+    Browser->>Browser: AES-GCM decrypt and verify fileHash
+    Browser->>Backend: POST /fabric/submit LogDownload
+    Backend->>Agent: offline signed submit
+    Agent->>Ledger: Download audit
+    Ledger-->>Risk: ASSET_DOWNLOADED event
+    Ledger-->>Agent: Audit recorded
+    Agent-->>Backend: Submit result
+    Backend-->>Browser: Download audit confirmed
+    Risk->>Ledger: BlockUserForSeconds if thresholds are crossed
+    end
+```
+
+## Crypto Tool Diagram
+
+```mermaid
+flowchart LR
+    subgraph Device["Browser trusted device boundary"]
+        Passkey["WebAuthn passkey<br/>private key in authenticator"]
+        DataPriv["Data encryption private key<br/>ECDH P-256, non-exportable working key"]
+        FabricPriv["Fabric signing private key<br/>ECDSA P-256, non-exportable working key"]
+        IDB["IndexedDB securedataLocalKeys<br/>protected local records"]
+        Recovery["Recovery bundle<br/>Argon2id + AES-256-GCM"]
+    end
+
+    subgraph PublicState["Public / shared state"]
+        WebAuthnPub["WebAuthn public key PEM<br/>stored in UserProfile"]
+        DataPub["Data encryption public key<br/>SECUREDATA-ECDH-P256... on-ledger"]
+        FabricCert["Fabric certificate<br/>from CSR enrollment"]
+        AssetKeyMap["Asset.Keys map<br/>userID -> encrypted content key"]
+        CID["IPFS CID of encrypted payload"]
+    end
+
+    subgraph ContentCrypto["Per-file content crypto"]
+        Plain["Original file bytes"]
+        FileHash["SHA-256 fileHash"]
+        ContentKey["Random 32-byte content key"]
+        ContentEnvelope["content envelope v2<br/>AES-256-GCM, 12-byte IV"]
+        ContentAAD["AAD<br/>type, version, alg, assetId,<br/>fileHash, filename, metadataHash"]
+        EncryptedBlob["Encrypted JSON envelope<br/>stored in IPFS"]
+    end
+
+    subgraph KeyEnvelope["Per-recipient key envelope v2"]
+        RecipientPub["Recipient ECDH public key"]
+        Ephemeral["Ephemeral ECDH P-256 keypair"]
+        SharedSecret["ECDH shared secret"]
+        HKDF["HKDF-SHA256<br/>salt 32 bytes, fixed info"]
+        WrapKey["AES-256-GCM wrap key"]
+        WrappedKey["SDC2:KEY:<base64 JSON><br/>encrypted content key"]
+    end
+
+    subgraph Signing["Fabric offline signing"]
+        ProposalBytes["Proposal bytes from Go helper"]
+        ProposalSig["DER ECDSA signature"]
+        TxBytes["Prepared transaction bytes"]
+        TxSig["DER ECDSA signature"]
+        SignedSubmit["Signed proposal/transaction submitted"]
+    end
+
+    Passkey -->|challenge signatures| WebAuthnPub
+    DataPriv --> IDB
+    FabricPriv --> IDB
+    DataPriv --> Recovery
+    FabricPriv --> Recovery
+    Recovery -. excludes .-> Passkey
+
+    DataPriv -->|export public JWK only| DataPub
+    FabricPriv -->|CSR public key| FabricCert
+
+    Plain --> FileHash
+    Plain --> ContentEnvelope
+    ContentKey --> ContentEnvelope
+    ContentAAD --> ContentEnvelope
+    ContentEnvelope --> EncryptedBlob
+    EncryptedBlob --> CID
+
+    DataPub --> RecipientPub
+    RecipientPub --> SharedSecret
+    Ephemeral --> SharedSecret
+    SharedSecret --> HKDF
+    HKDF --> WrapKey
+    ContentKey --> WrappedKey
+    WrapKey --> WrappedKey
+    WrappedKey --> AssetKeyMap
+
+    ProposalBytes --> BrowserSign1["Browser signs locally"]
+    FabricPriv --> BrowserSign1
+    BrowserSign1 --> ProposalSig
+    ProposalSig --> SignedSubmit
+    TxBytes --> BrowserSign2["Browser signs locally"]
+    FabricPriv --> BrowserSign2
+    BrowserSign2 --> TxSig
+    TxSig --> SignedSubmit
+
+    Legacy["Legacy compatibility<br/>RSA-OAEP / AES-CBC"] -. readable migration path .-> ContentEnvelope
+```
+
+## Workflow Diagram
+
+```mermaid
+flowchart TD
+    Start["Start local stack<br/>Fabric network, Kubo replicas, AI service,<br/>backend, Go agent, static UI"]
+    Health["Health checks<br/>/health, /health/ipfs, agent /health, AI /health"]
+    BootstrapNeeded{"SecurityService bootstrap needed?"}
+    BootstrapTicket["POST /auth/bootstrap-ticket<br/>issue/reissue invite for SecurityService"]
+    SecActivate["Activate SecurityService device<br/>passkey + local keys + Fabric CSR"]
+    SecSession["SecurityService session"]
+    CreateUsers["SecurityService creates users<br/>/auth/users -> Fabric CA register + ledger invite"]
+    UserActivate["User activates device<br/>invite + passkey + local keys + CSR"]
+    RecoveryGate{"Recovery bundle created?"}
+    CreateRecovery["Create recovery bundle<br/>Argon2id + AES-GCM export<br/>MarkRecoveryBundleCreated"]
+    Workspace["Role-aware workspace<br/>Dashboard, Assets, Audit, Security, Users, Settings"]
+
+    Upload["Researcher uploads file"]
+    Encrypt["Browser encrypts file<br/>AES-GCM content envelope + ECDH key envelope"]
+    Sanitize["Backend validates + DISP sanitizes metadata"]
+    StoreIPFS["Backend replicates encrypted blob to IPFS quorum"]
+    Predict["AI predicts category from sanitized text"]
+    CommitAsset["Browser signs CreateAsset<br/>chaincode forces Unverified"]
+    SuggestDecision{"AI suggestion actionable?"}
+    StoreSuggestion["MLService stores advisory suggestion<br/>only if actionable and above threshold"]
+    NeedsReview["Manual category review required<br/>for every new asset"]
+    Approve["Owner approves concrete category"]
+    ShareReady["Asset can be shared"]
+
+    Requester["Requester browses public asset"]
+    RequestAccess["RequestAccessWithReason"]
+    AccessDecision{"Chaincode policy result"}
+    Denied["DENIED<br/>ABAC, blocked user, or asset scan"]
+    Pending["PENDING owner review"]
+    OwnerGrant["Owner decrypts own key locally<br/>wraps content key for requester"]
+    GrantAccess["GrantAccess stores requester key envelope"]
+    AccessGranted["Requester has access<br/>encrypted key envelope stored"]
+
+    DownloadStart["Authorized user downloads"]
+    KeyFetch["RequestMyEncryptedKey transaction"]
+    RecentGrant{"Backend session has recent key-fetch grant?"}
+    FetchEncrypted["Backend fetches encrypted blob from IPFS"]
+    LocalDecrypt["Browser unwraps content key,<br/>decrypts payload, verifies fileHash"]
+    LogDownload["LogDownload ledger audit"]
+
+    RiskEvents["Risk-relevant chaincode events<br/>ACCESS_DENIED, ASSET_KEY_FETCHED, ASSET_DOWNLOADED"]
+    RiskBlock{"Risk threshold crossed?"}
+    AutoBlock["Risk engine submits BlockUserForSeconds"]
+    SecurityReview["SecurityService reviews audit, downloads,<br/>evidence trail, blocked users"]
+
+    Start --> Health --> BootstrapNeeded
+    BootstrapNeeded -- yes --> BootstrapTicket --> SecActivate --> SecSession
+    BootstrapNeeded -- no --> SecSession
+    SecSession --> CreateUsers --> UserActivate
+    SecSession --> Workspace
+    UserActivate --> RecoveryGate
+    RecoveryGate -- no --> CreateRecovery --> Workspace
+    RecoveryGate -- yes --> Workspace
+
+    Workspace --> Upload --> Encrypt --> Sanitize
+    Sanitize -->|reject| UploadRejected["Reject request with DISP reasons"]
+    Sanitize -->|allow or allow_with_review| Predict --> StoreIPFS --> CommitAsset --> SuggestDecision
+    SuggestDecision -- yes --> StoreSuggestion --> NeedsReview
+    SuggestDecision -- no --> NeedsReview
+    NeedsReview --> Approve --> ShareReady
+
+    Workspace --> Requester --> RequestAccess --> AccessDecision
+    AccessDecision -- denied --> Denied --> RiskEvents
+    AccessDecision -- pending --> Pending --> OwnerGrant --> GrantAccess --> AccessGranted
+
+    ShareReady --> DownloadStart --> KeyFetch --> RecentGrant
+    AccessGranted --> DownloadStart
+    KeyFetch --> RiskEvents
+    RecentGrant -- no --> DownloadDenied["403: use /download/asset only after key fetch"]
+    RecentGrant -- yes --> FetchEncrypted --> LocalDecrypt --> LogDownload --> RiskEvents
+
+    RiskEvents --> RiskBlock
+    RiskBlock -- yes --> AutoBlock --> SecurityReview
+    RiskBlock -- no --> SecurityReview
+    Workspace --> SecurityReview
+```
+
+## AI + Sanitizer Diagram
+
+```mermaid
+flowchart LR
+    RawUpload["Raw upload form fields<br/>title, authors, discipline, license,<br/>doi, keywords, description,<br/>owner, encryptedAesKey, fileHash"]
+    EncryptedFile["Encrypted content envelope<br/>from browser"]
+    FilenamePolicy["Filename + size policy<br/>YYYYMMDD_Author_Topic.ext.enc<br/>allowed ext, non-empty, MAX_UPLOAD_BYTES"]
+    EnvelopePolicy["Encrypted blob validation<br/>UTF-8 JSON v2 or legacy format<br/>AES-GCM iv/ciphertext checks"]
+    AADCheck["AAD consistency check<br/>assetId + fileHash must match upload"]
+    IPFSStore["IPFS replication<br/>pin encrypted bytes on configured Kubo nodes"]
+
+    subgraph DISPFlow["DISP sanitizer package"]
+        FieldRules["UPLOAD_RULES / METADATA_RULES<br/>field limits, aliases, validators"]
+        Normalize["NFKC normalize<br/>strip control + zero-width/bidi<br/>collapse whitespace or normalize newlines"]
+        Detect["Detectors<br/>XSS scriptish, HTML tags,<br/>prompt injection, mixed scripts, DoS-like text"]
+        Validate["Strict validators<br/>hex64 fileHash, non-empty key,<br/>format limits"]
+        Decision["Policy decision<br/>allow / allow_with_review / reject"]
+        Audit["audit_record<br/>request_hash, flags, risk_score, reasons"]
+        AISafe["AI-safe text wrapper<br/>BEGIN_USER_CONTENT ... END_USER_CONTENT<br/>(defense-in-depth helper,<br/>not consumed by current AI call)"]
+        LedgerSafe["Sanitized ledger-safe payload"]
+    end
+
+    subgraph BackendAI["server.py AI orchestration"]
+        BuildText["build_ai_text / format_model_input<br/>title [SEP] authors [SEP] keywords [SEP] description"]
+        PredictCall["POST AI_SERVICE_URL /predict"]
+        Threshold["Actionable category check<br/>not placeholder + confidence >= AUTO_SUGGEST_MIN_CONF"]
+        AutoSuggest["/ai_suggest_auto<br/>uses precomputed result or re-sanitizes metadata"]
+        Periodic["AUTO_SUGGEST daemon<br/>polls GetAllAssetsPublic"]
+    end
+
+    subgraph AIService["ai_service/main.py"]
+        CleanText["clean_text + _features_to_text"]
+        Tokenizer["AutoTokenizer from AI_MODEL_DIR"]
+        Model["TFAutoModelForSequenceClassification<br/>SciBERT multilabel"]
+        Sigmoid["sigmoid logits"]
+        ClassMap["encoder.classes_ + categories.json"]
+        TopK["top_k optional response"]
+        AIResult["suggested_label + confidence"]
+    end
+
+    subgraph LedgerPath["Ledger governance"]
+        CreateAsset["CreateAsset<br/>always Category = Unverified<br/>NeedsManualReview = true"]
+        MLSubmit["MLService AddSuggestedCategory<br/>requires service binding"]
+        OwnerApprove["Owner ApproveCategory<br/>concrete category only"]
+        GrantGate["GrantAccess gate<br/>normal owners cannot grant until approved"]
+        AuditLedger["Audit events<br/>ASSET_CREATED, ASSET_CATEGORY_SUGGESTED,<br/>ASSET_CATEGORY_APPROVED"]
+    end
+
+    RawUpload --> FilenamePolicy
+    FilenamePolicy --> EnvelopePolicy
+    EncryptedFile --> EnvelopePolicy
+    EnvelopePolicy --> FieldRules
+    FieldRules --> Normalize --> Detect --> Validate --> Decision
+    Decision --> Audit
+    Decision -- reject --> Reject["HTTP 400<br/>Input rejected by security policy"]
+    Decision --> LedgerSafe
+    Decision -. allow / allow_with_review<br/>(wrapper computed but unused) .-> AISafe
+
+    LedgerSafe -- allow / allow_with_review --> BuildText
+    BuildText --> PredictCall --> CleanText --> Tokenizer --> Model --> Sigmoid --> ClassMap --> AIResult
+    AIResult --> TopK
+    AIResult --> Threshold
+    LedgerSafe --> AADCheck
+    EncryptedFile --> AADCheck
+    AADCheck --> IPFSStore
+    LedgerSafe --> CreateAsset
+    Threshold -- actionable --> AutoSuggest --> MLSubmit --> AuditLedger
+    Threshold -- not actionable --> ManualOnly["Manual category review only"]
+    Periodic --> PredictCall
+    Periodic --> MLSubmit
+
+    CreateAsset --> AuditLedger
+    CreateAsset --> OwnerApprove --> AuditLedger
+    OwnerApprove --> GrantGate
+    ManualOnly --> OwnerApprove
+    Decision -- allow_with_review --> ReviewNote["ai_trusted=false<br/>manual review still required"]
+    ReviewNote --> OwnerApprove
+```

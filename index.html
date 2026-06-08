@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store, max-age=0, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self' data: blob: http://127.0.0.1:* http://localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' http://127.0.0.1:* http://localhost:*; connect-src 'self' http://127.0.0.1:* http://localhost:*; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:;">
+  <title>SecureData Archive · Secure Research Repository</title>
+  <script src="frontend/app/00-redirect.js?v=20260425a"></script>
+
+  <link href="frontend/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="frontend/vendor/bootstrap-icons/bootstrap-icons.css">
+
+  <script src="frontend/vendor/crypto-js/crypto-js.js"></script>
+  <script src="frontend/vendor/jsencrypt/jsencrypt.min.js"></script>
+
+  <link rel="stylesheet" href="frontend/styles.css?v=20260420a">
+</head>
+
+<body class="app-shell">
+
+  <div id="loginScreen" style="display:none;"></div>
+  <div id="recoveryGateScreen" style="display:none;"></div>
+
+  <!-- ==================== SESSION BAR ==================== -->
+  <div class="session-bar" id="sessionBar" style="display:none;">
+    <div class="session-bar-secondary ms-auto">
+      <span class="session-bar-user"><i class="bi bi-person-circle"></i> <span id="sessProfile">—</span></span>
+      <button class="btn btn-sm btn-outline-light py-0 px-2" onclick="handleLogout()" title="Sign out"><i
+          class="bi bi-box-arrow-right"></i> Sign Out</button>
+    </div>
+  </div>
+
+  <div class="container-fluid px-4 px-xxl-5 py-4 py-xl-5 workspace-shell" id="mainApp"
+    style="display:none; max-width: 1480px; margin: 0 auto;">
+    <div class="workspace-header">
+      <div class="workspace-brand">
+        <div class="workspace-mark"><i class="bi bi-shield-lock"></i></div>
+        <div>
+          <div class="workspace-kicker">Secure research data repository</div>
+          <h1 class="workspace-title">SecureData Archive</h1>
+        </div>
+      </div>
+    </div>
+
+    <div class="workspace-tabs-card">
+      <ul class="nav nav-tabs" role="tablist" id="mainTabs">
+        <li class="nav-item" role="presentation" id="nav-dashboard">
+          <button class="nav-link active" id="tab-dashboard" data-bs-toggle="tab" data-bs-target="#pane-dashboard"
+            type="button" role="tab">
+            <i class="bi bi-grid-1x2"></i> Dashboard
+          </button>
+        </li>
+        <li class="nav-item" role="presentation" id="nav-assets">
+          <button class="nav-link" id="tab-assets" data-bs-toggle="tab" data-bs-target="#pane-assets" type="button"
+            role="tab">
+            <i class="bi bi-folder2-open"></i> Assets
+          </button>
+        </li>
+        <li class="nav-item" role="presentation" id="nav-activity">
+          <button class="nav-link" id="tab-activity" data-bs-toggle="tab" data-bs-target="#pane-activity" type="button"
+            role="tab">
+            <i class="bi bi-clock-history"></i> Audit
+          </button>
+        </li>
+        <li class="nav-item" role="presentation" id="nav-security">
+          <button class="nav-link" id="tab-security" data-bs-toggle="tab" data-bs-target="#pane-security" type="button"
+            role="tab">
+            <i class="bi bi-shield-lock"></i> Security
+          </button>
+        </li>
+        <li class="nav-item" role="presentation" id="nav-users">
+          <button class="nav-link" id="tab-users" data-bs-toggle="tab" data-bs-target="#pane-users" type="button"
+            role="tab">
+            <i class="bi bi-people"></i> Users
+          </button>
+        </li>
+        <li class="nav-item" role="presentation" id="nav-settings">
+          <button class="nav-link" id="tab-settings" data-bs-toggle="tab" data-bs-target="#pane-settings" type="button"
+            role="tab">
+            <i class="bi bi-gear"></i> Settings
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <div class="tab-content pt-3">
+
+      <div class="tab-pane fade show active" id="pane-dashboard" role="tabpanel">
+        <div class="card shadow-sm section-card">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <div>
+              <div class="section-kicker">Repository index</div>
+              <b>All uploaded assets</b>
+              <div class="text-muted small">Review catalogue visibility, classification state, storage health, and
+                access posture before opening protected details.</div>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadDashboard(true)"><i
+                class="bi bi-arrow-clockwise"></i> Refresh</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle m-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="min-width:160px;">Asset ID</th>
+                  <th style="min-width:220px;">Title</th>
+                  <th style="min-width:220px;">Owner</th>
+                  <th style="min-width:160px;">Category</th>
+                  <th style="min-width:180px;">AI suggestion</th>
+                  <th style="min-width:170px;">Storage</th>
+                  <th style="min-width:140px;">Review</th>
+                  <th style="min-width:160px;">My access</th>
+                  <th style="min-width:320px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="dashboardFilesTable">
+                <tr>
+                  <td colspan="9" class="text-muted text-center p-3">Open dashboard to load.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="pane-assets" role="tabpanel">
+
+        <div class="row g-3 mb-3">
+          <div class="col-lg-3 col-md-6 role-nonsecurity">
+            <div class="card kpi-card">
+              <div class="card-body">
+                <div class="kpi-label">My assets</div>
+                <div class="kpi-number" id="kpiOwned">—</div>
+                <div class="kpi-sub">Files you own</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6 role-nonsecurity">
+            <div class="card kpi-card">
+              <div class="card-body">
+                <div class="kpi-label">Available to me</div>
+                <div class="kpi-number" id="kpiAvailable">—</div>
+                <div class="kpi-sub">Approved access</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6 role-nonsecurity">
+            <div class="card kpi-card">
+              <div class="card-body">
+                <div class="kpi-label">My requests</div>
+                <div class="kpi-number" id="kpiRequests">—</div>
+                <div class="kpi-sub">Access requests</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6 role-nonsecurity">
+            <div class="card kpi-card">
+              <div class="card-body">
+                <div class="kpi-label">Needs review</div>
+                <div class="kpi-number" id="kpiNeedsReview">—</div>
+                <div class="kpi-sub">Your assets awaiting approval</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="assetsNotice" class="mb-3"></div>
+
+
+        <div class="card mb-3 shadow-sm">
+          <div class="card-header bg-white">
+            <div class="section-kicker">Asset intake</div>
+            <b>Upload and classify an encrypted research file</b>
+            <div class="text-muted small">Encrypt locally, register metadata on-ledger, and keep the final category
+              under explicit review before sharing.</div>
+          </div>
+          <div class="card-body">
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+              <span class="badge bg-dark">Step 1</span>
+              <span class="small text-muted">File + abstract</span>
+              <span class="badge bg-secondary">Step 2</span>
+              <span class="small text-muted">Metadata</span>
+              <span class="badge bg-secondary">Step 3</span>
+              <span class="small text-muted">Result &amp; AI suggestion</span>
+            </div>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <input type="file" id="fileInput" class="form-control form-control-sm">
+                <small class="text-muted">Filename policy: YYYYMMDD_Author_Topic.ext</small>
+              </div>
+              <div class="col-md-6">
+                <input type="text" id="fileDesc" class="form-control form-control-sm" placeholder="Abstract (for AI)">
+              </div>
+            </div>
+
+            <hr class="my-3">
+
+            <div class="row g-2">
+              <div class="col-md-4">
+                <input type="text" id="metaTitle" class="form-control form-control-sm" placeholder="Title">
+              </div>
+              <div class="col-md-4">
+                <input type="text" id="metaAuthors" class="form-control form-control-sm" placeholder="Authors">
+              </div>
+              <div class="col-md-4">
+                <input type="text" id="metaDiscipline" class="form-control form-control-sm" placeholder="Discipline">
+              </div>
+              <div class="col-md-4">
+                <input type="text" id="metaLicense" class="form-control form-control-sm" placeholder="License">
+              </div>
+              <div class="col-md-4">
+                <input type="text" id="metaDOI" class="form-control form-control-sm" placeholder="DOI">
+              </div>
+              <div class="col-md-4">
+                <input type="text" id="metaKeywords" class="form-control form-control-sm" placeholder="Keywords">
+              </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-3">
+              <button id="btnUpload" class="btn btn-sm btn-success" onclick="uploadFile()">Encrypt and upload</button>
+            </div>
+            <div id="uploadResult" class="mt-3 d-none"></div>
+          </div>
+        </div>
+
+
+
+
+        <div class="card shadow-sm">
+
+          <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+              <div class="section-kicker">Governed ownership</div>
+              <b>My uploaded assets</b>
+              <div class="text-muted small">Review the files you own, approve categories, and respond to access requests
+                with full provenance in view.</div>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+              <div class="input-group input-group-sm" style="width: min(420px, 100%);">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input id="assetSearchInput" class="form-control" placeholder="Search your uploaded assets">
+                <button class="btn btn-outline-secondary" id="assetSearchClear" type="button"><i
+                    class="bi bi-x-lg"></i></button>
+              </div>
+            </div>
+            <select id="assetFilterSelect" class="form-select form-select-sm" style="width:auto;">
+              <option value="all">All my uploads</option>
+              <option value="needs_review">Needs review</option>
+              <option value="shared">Shared with others</option>
+              <option value="pending">Has pending requests</option>
+            </select>
+            <span class="text-muted small" id="assetFilterCount"></span>
+          </div>
+
+
+          <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle m-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="min-width:160px;">Asset ID</th>
+                  <th style="min-width:180px;">Title</th>
+                  <th>Authors</th>
+                  <th style="min-width:140px;">Official category</th>
+                  <th style="min-width:170px;">AI suggestion</th>
+                  <th style="min-width:220px;" class="role-security-cell">CID / storage</th>
+                  <th>Status</th>
+                  <th style="min-width:320px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="filesTable">
+                <tr>
+                  <td colspan="8" class="text-center text-muted">No data loaded.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+
+
+        <div class="card mt-3 shadow-sm d-none" id="logCard">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <div>
+              <b>Developer log</b>
+              <div class="text-muted small" id="logScopeHint">Private to this account on this device.</div>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-danger" type="button" onclick="clearCurrentUserDeveloperLog()"
+                title="Remove local history for this account">
+                <i class="bi bi-trash"></i> Clear
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#logCollapse">
+                <i class="bi bi-terminal"></i> Toggle
+              </button>
+            </div>
+          </div>
+          <div id="logCollapse" class="collapse">
+            <div class="card-body p-0">
+              <pre id="logBox" style="height: 220px; overflow:auto;" class="m-0 p-2"></pre>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+
+      <div class="tab-pane fade" id="pane-activity" role="tabpanel">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <h5 class="mb-0">Audit & downloads</h5>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="loadActivityView()"><i
+              class="bi bi-arrow-clockwise"></i> Refresh</button>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-lg-6">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <b>Audit events by actor</b>
+                <div class="d-flex gap-2 align-items-center">
+                  <input id="activityEventType" class="form-control form-control-sm mono"
+                    placeholder="eventType (SecurityService)" style="width: 210px;">
+                  <input id="activityActorId" class="form-control form-control-sm mono" placeholder="clientID (actor)"
+                    style="width: 250px;">
+                  <button class="btn btn-sm btn-outline-primary" onclick="loadActivityView()">Load</button>
+                </div>
+              </div>
+              <div class="card-body" id="activityOut">
+                <div class="text-muted">Open this tab to load.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-6">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <b>Download logs by user</b>
+                <div class="d-flex gap-2 align-items-center">
+                  <input id="downloadsUserId" class="form-control form-control-sm mono" placeholder="clientID (user)"
+                    style="width: 250px;">
+                  <button class="btn btn-sm btn-outline-primary" onclick="loadActivityView()">Load</button>
+                </div>
+              </div>
+              <div class="card-body" id="downloadsOut">
+                <div class="text-muted">Open this tab to load.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <div class="tab-pane fade" id="pane-security" role="tabpanel">
+        <div class="alert alert-info py-2" id="securityNotice">
+          <b>Security workspace</b> is available only when the active agent has role <code>SecurityService</code>.
+          Switch to the operational security identity to investigate alerts, review evidence, and enforce repository
+          policy.
+        </div>
+        <div class="row g-3 mb-3 role-security">
+          <div class="col-md-6 col-xl-3">
+            <div class="card kpi-card">
+              <div class="card-body">
+                <div class="kpi-label">Blocked users</div>
+                <div class="kpi-number" id="kpiBlocked">0</div>
+                <div class="kpi-sub">Accounts currently restricted by policy</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 col-xl-3">
+            <div class="card kpi-card">
+              <div class="card-body">
+                <div class="kpi-label">Recent denials</div>
+                <div class="kpi-number" id="kpiDenied">0</div>
+                <div class="kpi-sub">Latest alert events across governed actions</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="setupChecklistWrap" class="mb-3 d-none">
+          <div class="row g-3">
+            <div class="col-12">
+              <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                  <div><i class="bi bi-check2-square"></i> Setup checklist</div>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary" id="btnDashRefresh" type="button">
+                      <i class="bi bi-arrow-repeat"></i> Refresh
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-4">
+                      <div class="fw-semibold">Agents</div>
+                      <div class="small text-muted">Health status</div>
+                    </div>
+                    <div class="col-md-8" id="dashAgentBadges">—</div>
+                  </div>
+
+                  <hr class="my-3" />
+
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-4">
+                      <div class="fw-semibold">Backend</div>
+                      <div class="small text-muted">server.py (API_URL)</div>
+                    </div>
+                    <div class="col-md-8">
+                      <span class="badge bg-secondary" id="dashBackendBadge">—</span>
+                      <span class="small text-muted ms-2 mono" id="dashBackendDetail"></span>
+                    </div>
+                  </div>
+
+                  <hr class="my-3" />
+
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-4">
+                      <div class="fw-semibold">IPFS</div>
+                      <div class="small text-muted">Configured replication cluster</div>
+                    </div>
+                    <div class="col-md-8">
+                      <span class="badge bg-secondary" id="dashIpfsBadge">—</span>
+                      <span class="small text-muted ms-2 mono" id="dashIpfsDetail"></span>
+                    </div>
+                  </div>
+
+                  <hr class="my-3" />
+
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-4">
+                      <div class="fw-semibold">Ledger registration</div>
+                      <div class="small text-muted">Publish your on-ledger profile and encryption public key</div>
+                    </div>
+                    <div class="col-md-8 d-flex flex-wrap gap-2 align-items-center">
+                      <span class="badge bg-secondary" id="dashRegBadge">—</span>
+                      <span class="small text-muted mono" id="dashRegDetail"></span>
+                      <button class="btn btn-sm btn-outline-success ms-auto" id="btnDashRegister" type="button"
+                        style="display:none;">
+                        <i class="bi bi-person-plus"></i> Register
+                      </button>
+                    </div>
+                  </div>
+
+                  <hr class="my-3" />
+
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-4">
+                      <div class="fw-semibold">ML binding</div>
+                      <div class="small text-muted">Bind MLService → identity (SecurityService only)</div>
+                    </div>
+                    <div class="col-md-8 d-flex flex-wrap gap-2 align-items-center">
+                      <span class="badge bg-secondary" id="dashMlBadge">—</span>
+                      <span class="small text-muted mono break-anywhere dashboard-detail" id="dashMlDetail"></span>
+                      <button class="btn btn-sm btn-outline-danger ms-auto" id="btnDashBindMl" type="button"
+                        style="display:none;">
+                        <i class="bi bi-link-45deg"></i> Bind MLService
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="alert alert-info mt-3 mb-0">
+                    <div class="fw-semibold"><i class="bi bi-info-circle"></i> Governance rule</div>
+                    <div class="small">
+                      Upload creates assets as <b>Unverified</b> and marks <b>NeedsManualReview</b>. In most flows you
+                      must approve the category before granting access.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="riskDashboard" class="card shadow-sm mb-3 d-none">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <div class="fw-bold fs-5 m-0">Risk dashboard</div>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadRiskDashboard()"><i
+                class="bi bi-arrow-clockwise"></i> Refresh</button>
+          </div>
+          <div class="card-body">
+            <div class="row g-3 risk-grid">
+              <div class="col-lg-4">
+                <div class="risk-card h-100">
+                  <div class="fw-semibold mb-2">Top suspicious users</div>
+                  <div id="riskTopUsers" class="small text-muted risk-content">Open Security tab to load.</div>
+                </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="risk-card h-100">
+                  <div class="fw-semibold mb-2">Recent alerts</div>
+                  <div id="riskAlerts" class="small text-muted risk-content">Open Security tab to load.</div>
+                </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="risk-card h-100">
+                  <div class="fw-semibold mb-2">Blocked users</div>
+                  <div id="riskBlockedUsers" class="small text-muted risk-content">Open Security tab to load.</div>
+                </div>
+              </div>
+            </div>
+            <hr class="my-3" />
+            <div>
+              <div class="fw-semibold mb-2">Evidence trail</div>
+              <div class="risk-evidence-bar mb-2">
+                <input id="riskEvidenceUserId" class="form-control form-control-sm mono"
+                  placeholder="clientID to investigate">
+                <button class="btn btn-sm btn-outline-primary" onclick="loadEvidenceTrail()">Load</button>
+              </div>
+              <div id="riskEvidenceOut" class="small text-muted risk-evidence-out">Select a user to view audit +
+                download evidence.</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="securityPanel" class="card shadow-sm mb-3 d-none">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <b>🛡️ Smart Contract Access Control</b>
+            <button class="btn btn-sm btn-outline-secondary" onclick="secLoadUsers()"><i
+                class="bi bi-arrow-clockwise"></i> Refresh Users</button>
+          </div>
+          <div class="card-body">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-5">
+                <label class="form-label small mb-1">Target user</label>
+                <select id="secTargetId" class="form-select form-select-sm" onchange="secCheck()">
+                  <option value="">(Select user)</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small mb-1">Reason (if blocking)</label>
+                <input id="secReason" class="form-control form-control-sm" placeholder="e.g. spam">
+              </div>
+              <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-sm btn-danger flex-fill" onclick="secBlock()"><i class="bi bi-lock"></i>
+                  Block</button>
+                <button class="btn btn-sm btn-success flex-fill" onclick="secUnblock()"><i class="bi bi-unlock"></i>
+                  Unblock</button>
+              </div>
+            </div>
+
+            <div class="mt-3" id="secStatusWrap" style="display:none;">
+              <span id="secStatusLine" class="small text-muted"></span>
+            </div>
+
+            <pre id="secOut" class="mt-2 p-2 bg-dark text-light rounded d-none"
+              style="max-height:180px; overflow:auto; font-size:12px;"></pre>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ==================== USERS MANAGEMENT PANE ==================== -->
+      <div class="tab-pane fade" id="pane-users" role="tabpanel">
+        <div class="card shadow-sm mb-3">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <b><i class="bi bi-people"></i> User Management</b>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-primary" onclick="loadUsersList()"><i
+                  class="bi bi-arrow-clockwise"></i> Refresh</button>
+              <button class="btn btn-sm btn-primary" onclick="showCreateUserForm()"><i class="bi bi-person-plus"></i>
+                Create User</button>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Username</th>
+                    <th>Display Name</th>
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>Fabric Profile</th>
+                    <th>Status</th>
+                    <th>Last Login</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                  <tr>
+                    <td colspan="8" class="text-center text-muted py-4">Loading…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Create / Edit User Card (hidden by default) -->
+        <div class="card shadow-sm mb-3 d-none" id="userFormCard">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <b id="userFormTitle"><i class="bi bi-person-plus"></i> Create User</b>
+            <button class="btn btn-sm btn-outline-secondary" onclick="hideUserForm()"><i
+                class="bi bi-x-lg"></i></button>
+          </div>
+          <div class="card-body">
+            <input type="hidden" id="ufEditMode" value="create">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Username</label>
+                <input type="text" id="ufUsername" class="form-control" placeholder="e.g. ivan">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Enrollment</label>
+                <div class="form-control bg-light d-flex align-items-center">Invite ticket will be generated after save
+                </div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Role</label>
+                <select id="ufRole" class="form-select">
+                  <option value="Researcher">Researcher</option>
+                  <option value="SecurityService">SecurityService</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Department</label>
+                <input type="text" id="ufDepartment" class="form-control" placeholder="e.g. Physics Lab">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Organization</label>
+                <select id="ufOrg" class="form-select">
+                  <option value="org1">Org1</option>
+                  <option value="org2">Org2</option>
+                </select>
+              </div>
+            </div>
+            <div id="ufError" class="alert alert-danger py-2 d-none small mt-3"></div>
+            <div class="mt-3 d-flex gap-2">
+              <button class="btn btn-primary" onclick="submitUserForm()"><i class="bi bi-ticket-perforated"></i> Issue
+                Invite</button>
+              <button class="btn btn-outline-secondary" onclick="hideUserForm()">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Auth Audit Log -->
+        <div class="card shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <b><i class="bi bi-journal-text"></i> Authentication Audit Log</b>
+            <button class="btn btn-sm btn-outline-primary" onclick="loadAuthAudit()"><i
+                class="bi bi-arrow-clockwise"></i> Refresh</button>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive" style="max-height:360px; overflow-y:auto;">
+              <table class="table table-sm table-hover mb-0">
+                <thead class="table-light sticky-top">
+                  <tr>
+                    <th>Time</th>
+                    <th>Event</th>
+                    <th>User</th>
+                    <th>Actor</th>
+                    <th>Details</th>
+                    <th>IP</th>
+                  </tr>
+                </thead>
+                <tbody id="authAuditBody">
+                  <tr>
+                    <td colspan="6" class="text-center text-muted py-3">Click Refresh to load…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <div class="tab-pane fade" id="pane-settings" role="tabpanel">
+        <div class="settings-shell">
+          <div class="card shadow-sm settings-overview-card">
+            <div class="card-body">
+              <div class="settings-overview-head">
+                <div>
+                  <div class="section-kicker">Workspace settings</div>
+                  <h3 class="pane-title mb-2">Account protection and device controls</h3>
+                  <p class="pane-intro mb-0">Manage the active repository identity, keep recovery protection current,
+                    and control the passkeys bound to this device.</p>
+                </div>
+                <div class="settings-toolbar">
+                  <button class="btn btn-sm btn-outline-secondary" type="button" onclick="refreshIdentity(true)"><i
+                      class="bi bi-arrow-clockwise"></i> Refresh</button>
+                  <button class="btn btn-sm btn-outline-secondary" type="button"
+                    onclick="registerAdditionalPasskey()"><i class="bi bi-plus-circle"></i> Add Passkey</button>
+                  <button class="btn btn-sm btn-outline-primary" type="button" onclick="createRecoveryBundle()"><i
+                      class="bi bi-shield-check"></i> Create Recovery Bundle</button>
+                  <button class="btn btn-sm btn-outline-secondary" type="button"
+                    onclick="triggerRecoveryBundleImport()"><i class="bi bi-upload"></i> Restore Bundle</button>
+                </div>
+              </div>
+              <div class="settings-summary-grid mt-4">
+                <div class="settings-summary-card">
+                  <div class="settings-label">Recovery bundle</div>
+                  <div class="settings-summary-value" id="profRecoveryState">—</div>
+                  <div class="settings-note">Store the downloaded bundle offline so this identity can be recovered
+                    safely on another device.</div>
+                </div>
+                <div class="settings-summary-card">
+                  <div class="settings-label">Registered passkeys</div>
+                  <div class="settings-summary-value" id="profPasskeyCount">—</div>
+                  <div class="settings-note">Passkeys control sign-in and confirm sensitive recovery actions on this
+                    account.</div>
+                </div>
+                <div class="settings-summary-card">
+                  <div class="settings-label">Registration state</div>
+                  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span class="badge bg-secondary" id="sessRegBadge">—</span>
+                    <span class="text-muted small" id="sessRegDetail"></span>
+                  </div>
+                  <div class="settings-note">On-ledger registration and local content-key sync must stay aligned for
+                    governed repository work.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-xl-7">
+              <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                  <div class="section-kicker">Identity</div>
+                  <b>Active repository account</b>
+                </div>
+                <div class="card-body">
+                  <div class="settings-section-grid">
+                    <div class="settings-field">
+                      <div class="settings-label">Username</div>
+                      <div class="settings-field-value" id="profUsername">—</div>
+                    </div>
+                    <div class="settings-field">
+                      <div class="settings-label">Display name</div>
+                      <div class="settings-field-value" id="profDisplayName">—</div>
+                    </div>
+                    <div class="settings-field">
+                      <div class="settings-label">Status</div>
+                      <div id="profStatus"><span class="badge bg-secondary">—</span></div>
+                    </div>
+                    <div class="settings-field">
+                      <div class="settings-label">Role</div>
+                      <div><span class="badge bg-secondary" id="idRole">—</span></div>
+                    </div>
+                    <div class="settings-field">
+                      <div class="settings-label">Department</div>
+                      <div class="settings-field-value" id="idDept">—</div>
+                    </div>
+                    <div class="settings-field">
+                      <div class="settings-label">MSP</div>
+                      <div class="settings-field-value mono break-anywhere" id="idMsp">—</div>
+                    </div>
+                    <div class="settings-field settings-field-wide">
+                      <div class="settings-label">ClientID</div>
+                      <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <code class="mono break-anywhere" id="idClient">—</code>
+                        <button class="btn btn-sm btn-outline-secondary" type="button"
+                          onclick="copyElText('idClient')"><i class="bi bi-clipboard"></i></button>
+                      </div>
+                    </div>
+                    <div class="settings-field settings-field-wide">
+                      <div class="settings-label">Fabric identity</div>
+                      <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <code class="mono break-anywhere" id="profFabric">—</code>
+                        <button class="btn btn-sm btn-outline-secondary" type="button"
+                          onclick="copyElText('profFabric')"><i class="bi bi-clipboard"></i></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="settings-status-line" id="idBlockLine">Identity details load after connection.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-xl-5">
+              <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                  <div class="section-kicker">Security on this device</div>
+                  <b>Session, keys, and relay</b>
+                </div>
+                <div class="card-body">
+                  <div class="settings-stack">
+                    <div class="settings-field">
+                      <div class="settings-label">Agent auth</div>
+                      <div id="sessTokenState">—</div>
+                    </div>
+                    <div class="settings-field">
+                      <div class="settings-label">Data encryption identity</div>
+                      <div class="settings-field-value" id="profContentKeyState">—</div>
+                    </div>
+                    <div class="settings-field">
+                      <div class="settings-label">Fabric signing identity</div>
+                      <div class="settings-field-value" id="profFabricKeyState">—</div>
+                    </div>
+                    <div class="settings-field">
+                      <div class="settings-label">Agent relay</div>
+                      <code class="mono break-anywhere" id="idAgent">—</code>
+                    </div>
+                  </div>
+                  <div class="settings-actions">
+                    <button class="btn btn-sm btn-outline-success" id="btnSettingsRegister" type="button"
+                      onclick="registerIdentity()"><i class="bi bi-key"></i> Sync Encryption Key</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                  <div class="section-kicker">Registered authenticators</div>
+                  <b>Passkey devices</b>
+                </div>
+                <div class="card-body">
+                  <div id="profPasskeyList" class="settings-passkey-list"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Asset Drawer: realistic "details + audit + access" in one place -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="assetDrawer" aria-labelledby="assetDrawerLabel">
+    <div class="offcanvas-header">
+      <div>
+        <h5 class="offcanvas-title" id="assetDrawerLabel">Asset</h5>
+        <div class="text-muted small" id="assetDrawerSub">—</div>
+      </div>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+      <div id="drawerAlerts"></div>
+
+      <div class="d-flex flex-wrap gap-2 mb-2">
+        <button class="btn btn-sm btn-outline-primary" id="drawerBtnRequest" onclick="drawerRequestAccess()">Request
+          access</button>
+        <button class="btn btn-sm btn-outline-success" id="drawerBtnDownload"
+          onclick="drawerDownload()">Download</button>
+        <button class="btn btn-sm btn-warning d-none" id="drawerBtnApprove" onclick="drawerApproveCategory()">Approve
+          category</button>
+        <button class="btn btn-sm btn-outline-danger d-none" id="drawerBtnRotate"
+          onclick="drawerRotate()">Rotate</button>
+      </div>
+
+      <div id="drawerOwnerPanel" class="mb-2"></div>
+
+      <ul class="nav nav-tabs" id="drawerTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="tab-overview" data-bs-toggle="tab" data-bs-target="#pane-overview"
+            type="button" role="tab">Overview</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-audit" data-bs-toggle="tab" data-bs-target="#pane-audit" type="button"
+            role="tab">Audit</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-downloads" data-bs-toggle="tab" data-bs-target="#pane-downloads"
+            type="button" role="tab">Downloads</button>
+        </li>
+      </ul>
+
+      <div class="tab-content pt-3">
+        <div class="tab-pane fade show active" id="pane-overview" role="tabpanel">
+          <div id="drawerOverview" class="small text-muted">Loading…</div>
+        </div>
+
+        <div class="tab-pane fade" id="pane-audit" role="tabpanel">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="small text-muted">On-chain audit events (owner or SecurityService)</div>
+            <button class="btn btn-sm btn-outline-secondary" onclick="drawerReloadAudit()"><i
+                class="bi bi-arrow-clockwise"></i></button>
+          </div>
+          <div id="drawerAudit" class="mt-2">Loading…</div>
+        </div>
+
+        <div class="tab-pane fade" id="pane-downloads" role="tabpanel">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="small text-muted">Download audit records (owner or SecurityService)</div>
+            <button class="btn btn-sm btn-outline-secondary" onclick="drawerReloadDownloads()"><i
+                class="bi bi-arrow-clockwise"></i></button>
+          </div>
+          <div id="drawerDownloads" class="mt-2">Loading…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="modal fade" id="metadataModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Metadata</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="metadataModalBody">
+          <div class="text-center text-muted">Loading...</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Toasts -->
+  <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 2000;"></div>
+  <input id="recoveryBundleFileInput" type="file" accept=".securedata-recovery.json,application/json" class="d-none">
+
+  <!-- Confirm modal -->
+  <div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmModalTitle">Confirm</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="confirmModalBody"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" id="confirmModalCancel"
+            data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmModalOk">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prompt modal -->
+  <div class="modal fade" id="promptModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="promptModalTitle">Input</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label" id="promptModalLabel"></label>
+          <div id="promptModalInputWrap"></div>
+          <div class="muted-help mt-2" id="promptModalHelp"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" id="promptModalCancel"
+            data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="promptModalOk">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Access request modal -->
+  <div class="modal fade" id="accessRequestModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Request access</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2">
+            <label class="form-label">Reason</label>
+            <select id="accessReasonSelect" class="form-select">
+              <option value="Research">Research</option>
+              <option value="Audit">Audit</option>
+              <option value="Task">Task</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Details (optional)</label>
+            <textarea id="accessReasonDetails" class="form-control" rows="3"
+              placeholder="Add short context for the owner"></textarea>
+          </div>
+          <div class="muted-help mt-2">Owners see this reason before approving access.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="accessRequestSubmit">Submit request</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Approve category modal -->
+  <div class="modal fade" id="approveModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Approve category</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-md-4"><span class="text-muted">Asset:</span> <code id="approveAssetId">—</code></div>
+            <div class="col-md-4"><span class="text-muted">Current:</span> <b id="approveCurrent">—</b></div>
+            <div class="col-md-4"><span class="text-muted">Needs review:</span> <b id="approveNeedsReview">—</b></div>
+            <div class="col-md-8 mt-2"><span class="text-muted">Suggested:</span> <b id="approveSuggested">—</b> <span
+                class="text-muted small" id="approveConfidence">—</span></div>
+          </div>
+          <hr class="my-2">
+          <label class="form-label">Approved category</label>
+          <input id="approveCategoryInput" class="form-control" placeholder="e.g. Finance / HR / Research / Public" />
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" id="approveAck">
+            <label class="form-check-label" for="approveAck">
+              I reviewed the asset metadata and accept responsibility for this classification.
+            </label>
+          </div>
+          <div class="muted-help mt-2">
+            Tip: keep categories consistent across assets (same spelling + casing).
+          </div>
+          <div class="small text-muted mt-2" id="approveModalHint"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-warning" id="approveModalOk">Approve</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="frontend/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="frontend/vendor/argon2/argon2-bundled.min.js"></script>
+
+  <!--
+    app.js was split into 6 ordered, flat-scope modules under frontend/app/.
+    They must be loaded in this order - later modules reference helpers
+    and state defined by earlier ones.
+  -->
+  <script src="frontend/app/01-core.js?v=20260424csrf"></script>
+  <script src="frontend/app/02-assets-crypto.js?v=20260418c"></script>
+  <script src="frontend/app/03-recovery-log.js?v=20260424csrf"></script>
+  <script src="frontend/app/04-identity-drawer.js?v=20260420a"></script>
+  <script src="frontend/app/05-files-actions.js?v=20260418c"></script>
+  <script src="frontend/app/06-dashboard.js?v=20260419b"></script>
+
+</body>
+
+</html>

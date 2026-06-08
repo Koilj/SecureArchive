@@ -1,0 +1,148 @@
+1. Init Fabric network and bootstrap service identities
+
+cd /home/ruslan/working
+source /home/ruslan/working/.venv/bin/activate
+python3 -B init_network.py
+
+
+2. Start AI service (separate terminal)
+
+cd /home/ruslan/working/ai_service
+source /home/ruslan/working/.venv/bin/activate
+python3 -B main.py
+
+   AI service listens on http://127.0.0.1:8100
+   To use a dedicated venv:
+     python3 -m venv .venv-ai && source .venv-ai/bin/activate
+     pip install -r ai_service/requirements.txt
+     cd ai_service && python3 -B main.py
+
+
+3. Start local IPFS (Kubo) replicas — REAL daemons, not mocks
+
+Kubo is free, self-hosted and fully offline. `scripts/ipfs_dev.sh` manages
+two isolated daemons under ~/.securedata-ipfs (one-off init, then start).
+
+cd /home/ruslan/working
+./scripts/ipfs_dev.sh start     # launches node-a (API 5011) + node-b (API 5012)
+./scripts/ipfs_dev.sh status    # show pid / pins / repo stats
+./scripts/ipfs_dev.sh env       # print export lines for the backend
+
+The script:
+  - creates one Kubo repo per node with --profile=server --empty-repo
+  - binds API, gateway and swarm to distinct localhost ports
+  - removes public bootstrap peers (private local cluster)
+  - peers node-a and node-b to each other so bitswap works offline
+  - enables GC + StorageMax=5GB per node (pins are protected from GC)
+
+Do NOT use mock_ipfs_node.py for production or manual demos. It is a
+unit-test-only stub: no libp2p, no DHT, no real UnixFS DAG. Real tests
+against Kubo live in tests/test_ipfs_real.py.
+
+
+4. Start backend (auto-starts unified Go agent)
+
+cd /home/ruslan/working
+source .venv/bin/activate
+
+export FABRIC_PATH=/home/ruslan/fabric-dev/fabric-samples/test-network
+export AUTO_SUGGEST=1
+export IPFS_NODE_URLS=http://127.0.0.1:5011,http://127.0.0.1:5012
+export IPFS_MIN_REPLICAS=2
+export IPFS_TARGET_REPLICAS=2
+# Optional: mirror every CID to a free external pinning service (web3.storage,
+# filebase, pinata - any PSA-compliant provider). Leave unset to stay fully
+# self-hosted.
+# export IPFS_REMOTE_PIN_ENDPOINT=https://api.web3.storage
+# export IPFS_REMOTE_PIN_TOKEN=<jwt-from-provider>
+export AGENT_AUTOSTART=1
+# AGENT_DISABLE_AUTH=1 disables the agent's Bearer-token guard. Leave it unset
+# for production; when AGENT_AUTOSTART=1 the backend mints and shares a token
+# with the agent automatically. Set it only if you want to call the Go agent
+# directly from curl/Postman during debugging.
+# export AGENT_DISABLE_AUTH=1
+
+python3 -B server.py
+
+   The backend will:
+   - Auto-start the unified Go agent on port 8090 (SecurityService + MLService)
+   - Probe the AI service at http://127.0.0.1:8100
+   - Start IPFS replication monitor
+   - Start auto-suggest daemon (if AUTO_SUGGEST=1)
+
+   Optional: to also auto-start AI service from server.py:
+     export AI_SERVICE_AUTOSTART=1
+
+   Optional: to start Go agent manually instead:
+     export AGENT_AUTOSTART=0
+     cd agent-go && go run . serve-unified
+
+   Legacy mode (two separate agents) still works:
+     export AGENT_AUTOSTART=0
+     # Terminal A: AGENT_USER=SecurityService go run . serve
+     # Terminal B: AGENT_USER=MLService AGENT_HTTP_ADDR=127.0.0.1:8091 go run . serve
+     # Then set ML_AGENT_URL=http://127.0.0.1:8091 for the backend
+
+
+5. Check service health
+
+curl -s http://127.0.0.1:8090/health   # unified Go agent
+curl -s http://127.0.0.1:8100/health   # AI service
+curl -s http://127.0.0.1:5500/health   # backend
+echo
+
+
+6. Start static site
+
+cd /home/ruslan/working
+python3 -B -m http.server 8000
+
+
+7. Open UI
+
+http://localhost:8000/
+
+Use `localhost`, not `127.0.0.1`, because WebAuthn/passkey RP validation fails on the Chromium setup used here.
+
+
+8. Bootstrap SecurityService
+
+- Open the UI and click the bootstrap action.
+- The browser activates the device with a WebAuthn passkey.
+- The browser also creates three device-local keys:
+  - data encryption ECDH key for modern key envelopes
+  - Fabric signing key
+  - WebAuthn/passkey credential
+- The backend only issues a bootstrap invite/enrollment ticket and proxies Fabric CA enrollment.
+- The backend does not keep the user private key or a server-side Fabric wallet.
+
+
+9. Create users
+
+- Sign in to the UI as `SecurityService` with passkey/WebAuthn.
+- Open `Users` and issue invite tickets for new users.
+- A new user opens the same UI, pastes the invite token, activates their device, and then signs in later with passkey/WebAuthn.
+
+
+10. Current security model
+
+- no password auth for users
+- no `securedata_auth.db`
+- no server-side user Fabric wallet directory
+- public WebAuthn credential metadata is stored in the ledger user profile
+- backend `/fabric/eval` and `/fabric/submit` use offline proposal/transaction signing
+- the device signs Fabric proposal/transaction bytes locally and the backend only forwards signed payloads
+
+
+11. When to use the recovery bundle
+
+- Use it on a new browser or a new device to restore the local content-decryption key and local Fabric signing key.
+- Use it after browser storage reset, browser profile cleanup, OS reinstall, or device replacement.
+- Use it when the UI reports that the local private key or local Fabric key is missing on this device.
+- Do not use it for normal daily sign-in on the same activated browser/device.
+- The bundle is separate from passkeys: passkeys handle login, the recovery bundle restores device-local decryption and Fabric signing material.
+
+CID=""
+
+curl -s -X POST "http://127.0.0.1:5011/api/v0/cat?arg=$CID" -o ipfs_ciphertext_node_a.enc
+curl -s -X POST "http://127.0.0.1:5012/api/v0/cat?arg=$CID" -o ipfs_ciphertext_node_b.enc

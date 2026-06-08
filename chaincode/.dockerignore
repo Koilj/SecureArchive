@@ -1,0 +1,6 @@
+.git
+.gitignore
+test-chaincode
+test-build
+*.tar.gz
+__pycache__

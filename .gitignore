@@ -1,0 +1,18 @@
+.venv/
+.venv-ai/
+.codex
+.codex/
+.pytest_cache/
+__pycache__/
+*.pyc
+agent-go/securedata-agent
+chaincode/securedata
+securedata.tar.gz
+playwright-report/
+test-results/
+tmp/
+.env
+.env.local
+securedata-backups/
+# Large trained model artefacts (420MB tf_model.h5); rebuild via train_model.py
+scibert_multilabel_v3/
